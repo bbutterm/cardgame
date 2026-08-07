@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import type { MatchState, PlayerIndex } from '@delezh/engine';
+import { PROTOCOL_VERSION } from '@delezh/protocol';
 import type {
   ClientToServer,
   MatchOver,
@@ -61,7 +62,7 @@ export function useOnlineMatch() {
 
     const identify = () => {
       setSelfOffline(false);
-      socket.emit('identify', { id: profile.id, name: profile.name }, (result) => {
+      socket.emit('identify', { id: profile.id, name: profile.name, protocol: PROTOCOL_VERSION }, (result) => {
         if ('ok' in result && result.ok) {
           updateProfile({ rating: result.rating });
           setStage((current) => (current.kind === 'connecting' ? { kind: 'idle' } : current));

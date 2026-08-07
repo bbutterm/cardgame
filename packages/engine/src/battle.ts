@@ -1,6 +1,6 @@
 import { cardMatches, type CardDef, type Condition, type Counter } from '@delezh/cards';
 import type { MatchConfig } from './config.js';
-import type { CardBattleLine, CardInstance, CardLookup, PlayerIndex, RoundResult } from './types.js';
+import type { CardBattleLine, CardInstance, PlayerIndex, RoundResult } from './types.js';
 
 /** Everything a condition or counter can read. Kept tiny and side-effect free. */
 export interface SideContext {
@@ -199,5 +199,3 @@ export function resolveLines(cards: CardDef[], opponent: CardDef[], pickedSecond
   ];
   return cards.map((card, i) => lineFor({ uid: `t${i}`, cardId: card.id, row: 0, slot: i }, card, sides, 0, i));
 }
-
-export type { CardLookup };

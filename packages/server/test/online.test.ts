@@ -462,6 +462,20 @@ describe('review regressions', () => {
     b.close();
   });
 
+  it('refuses a client speaking a different protocol version', async () => {
+    // A cache-first service worker can keep an old client alive across a
+    // deploy; better to reject it at the door than desync it subtly later.
+    const a = new Client('proto-1', 'Old');
+    await a.connected();
+    const result = await new Promise<{ ok: boolean; code?: string }>((resolve) => {
+      a.socket.emit('identify', { id: 'proto-1', name: 'Old', protocol: 99 }, (r) =>
+        resolve('ok' in r && r.ok ? { ok: true } : { ok: false, code: (r as { code: string }).code }),
+      );
+    });
+    expect(result.ok).toBe(false);
+    a.close();
+  });
+
   it('refuses a second identity on one socket', async () => {
     const a = new Client('ident-1', 'One');
     await a.connected();

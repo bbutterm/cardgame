@@ -11,10 +11,16 @@ import type { GameEvent, MatchState, PlayerIndex } from '@delezh/engine';
 
 export const PROTOCOL_VERSION = 1;
 
+/**
+ * A cache-first service worker means an old client can outlive a deploy, so the
+ * server checks this on identify and refuses a mismatch rather than letting a
+ * stale client desync in some subtler way later.
+ */
 export interface PlayerIdentity {
   /** Stable per-device id; lets a player reclaim their seat after a reload. */
   id: string;
   name: string;
+  protocol?: number;
 }
 
 export interface RoomSummary {

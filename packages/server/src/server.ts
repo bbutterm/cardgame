@@ -5,6 +5,7 @@ import {
   isEmoteKey,
   isValidCode,
   protocolError,
+  PROTOCOL_VERSION,
   type ClientToServer,
   type PlayerIdentity,
   type ServerToClient,
@@ -232,6 +233,10 @@ io.on('connection', (socket) => {
       return ack(protocolError('rate_limited', 'already identified'));
     }
     if (!allow(socket, 'identify', 1, 3)) return ack(protocolError('rate_limited'));
+    // A cache-first service worker can keep an old client alive across a deploy.
+    if (identity.protocol !== undefined && identity.protocol !== PROTOCOL_VERSION) {
+      return ack(protocolError('internal', `protocol ${identity.protocol} != ${PROTOCOL_VERSION}`));
+    }
     void (async () => {
       try {
       const record = await repo.ensure(identity.id, (identity.name ?? '').slice(0, 20));

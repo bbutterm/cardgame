@@ -1,4 +1,3 @@
-import type { CardDef } from '@delezh/cards';
 import type { MatchConfig } from './config.js';
 
 export type PlayerIndex = 0 | 1;
@@ -121,5 +120,3 @@ export interface ApplyResult {
   events: GameEvent[];
 }
 
-/** Resolved card lookup used across the engine, injectable for tests. */
-export type CardLookup = (id: string) => CardDef;
