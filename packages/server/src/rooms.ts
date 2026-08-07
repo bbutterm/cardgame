@@ -6,6 +6,7 @@ import {
   other,
   viewFor,
   type GameEvent,
+  type MatchConfig,
   type MatchState,
   type PlayerIndex,
 } from '@delezh/engine';
@@ -132,7 +133,7 @@ export function summarize(room: Room): RoomSummary {
 }
 
 /** Starts (or restarts, for a rematch) the match in a full room. */
-export function startMatch(room: Room): MatchState {
+export function startMatch(room: Room, config?: Partial<MatchConfig>): MatchState {
   room.matchId = randomUUID();
   room.scored = false;
   for (const seat of room.seats) {
@@ -140,7 +141,7 @@ export function startMatch(room: Room): MatchState {
   }
 
   const firstPicker: PlayerIndex = Math.random() < 0.5 ? 0 : 1;
-  const created = createMatch({ seed: randomUUID(), firstPicker });
+  const created = createMatch({ seed: randomUUID(), firstPicker, config });
   room.state = created.state;
   room.turnDeadline = Date.now() + created.state.config.pickTimeoutMs;
   return created.state;
