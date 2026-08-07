@@ -6,8 +6,9 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
-    "build": "tsc -p tsconfig.build.json"
+    "start": "node dist/server.js",
+    "build": "tsc --noEmit -p tsconfig.json && node scripts/bundle.mjs",
+    "start:dev": "tsx src/index.ts"
   },
   "dependencies": {
     "@delezh/cards": "workspace:*",
@@ -16,6 +17,7 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "esbuild": "^0.25.0"
   }
 }
