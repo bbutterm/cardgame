@@ -13,9 +13,10 @@
     "start": "pnpm -F @delezh/server start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b --force",
+    "typecheck": "tsc -b --force packages/cards packages/engine packages/bot packages/protocol && tsc --noEmit -p packages/client/tsconfig.json && tsc --noEmit -p packages/server/tsconfig.json",
     "sim": "tsx packages/bot/scripts/simulate.ts",
-    "balance": "tsx packages/bot/scripts/balance.ts"
+    "balance": "tsx packages/bot/scripts/balance.ts",
+    "check": "pnpm typecheck && pnpm test"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
