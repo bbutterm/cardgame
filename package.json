@@ -1,0 +1,32 @@
+{
+  "name": "delezh",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -n server,client -c magenta,cyan \"pnpm -F @delezh/server dev\" \"pnpm -F @delezh/client dev\"",
+    "build": "pnpm -F @delezh/client build && pnpm -F @delezh/server build",
+    "start": "pnpm -F @delezh/server start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --force",
+    "sim": "tsx packages/bot/scripts/simulate.ts",
+    "balance": "tsx packages/bot/scripts/balance.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

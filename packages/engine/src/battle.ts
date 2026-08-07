@@ -1,0 +1,193 @@
+import { cardMatches, type CardDef, type Condition, type Counter } from '@delezh/cards';
+import type { MatchConfig } from './config.js';
+import type { CardBattleLine, CardInstance, CardLookup, PlayerIndex, RoundResult } from './types.js';
+
+/** Everything a condition or counter can read. Kept tiny and side-effect free. */
+export interface SideContext {
+  cards: CardDef[];
+  hp: number;
+  pickedSecond: boolean;
+}
+
+export interface BattleInput {
+  round: number;
+  sides: [SideContext, SideContext];
+  instances: [CardInstance[], CardInstance[]];
+  config: MatchConfig;
+}
+
+function count(counter: Counter, self: CardDef, sides: [SideContext, SideContext], side: PlayerIndex): number {
+  const target = counter.scope === 'self' ? sides[side] : sides[side === 0 ? 1 : 0];
+  let n = 0;
+  for (const card of target.cards) {
+    if (counter.excludeSelf && card === self) continue;
+    if (cardMatches(card, counter)) n++;
+  }
+  return n;
+}
+
+function test(
+  cond: Condition,
+  self: CardDef,
+  sides: [SideContext, SideContext],
+  side: PlayerIndex,
+): boolean {
+  const me = sides[side];
+  const foe = sides[side === 0 ? 1 : 0];
+  switch (cond.type) {
+    case 'count':
+      return count(cond.counter, self, sides, side) >= (cond.min ?? 1);
+    case 'pickedSecond':
+      return me.pickedSecond;
+    case 'hpAtMost':
+      return me.hp <= cond.value;
+    case 'behind':
+      return me.hp < foe.hp;
+  }
+}
+
+/** Power contributed by one card, after its own static modifiers. */
+function lineFor(
+  instance: CardInstance,
+  card: CardDef,
+  sides: [SideContext, SideContext],
+  side: PlayerIndex,
+): CardBattleLine {
+  const base = card.power;
+  let bonus = 0;
+
+  for (const effect of card.effects) {
+    switch (effect.kind) {
+      case 'powerIf':
+        if (test(effect.cond, card, sides, side)) bonus += effect.amount;
+        break;
+      case 'powerPer':
+        bonus += effect.amount * count(effect.counter, card, sides, side);
+        break;
+      case 'mirrorStrongest': {
+        // Base powers only — never other cards' bonuses — so two Mirror Idols
+        // cannot feed each other and resolution stays order-independent.
+        let strongest = 0;
+        for (const peer of sides[side].cards) {
+          if (peer === card) continue;
+          if (peer.power > strongest) strongest = peer.power;
+        }
+        bonus += Math.max(0, strongest - base);
+        break;
+      }
+      case 'lonerBonus':
+        bonus += effect.amount - sides[side].cards.length;
+        break;
+      default:
+        break;
+    }
+  }
+
+  return {
+    uid: instance.uid,
+    cardId: card.id,
+    base,
+    bonus,
+    total: Math.max(0, base + bonus),
+  };
+}
+
+function sumEffect(cards: CardDef[], kind: 'weaken' | 'shield' | 'burn' | 'heal'): number {
+  let total = 0;
+  for (const card of cards) {
+    for (const effect of card.effects) {
+      if (effect.kind === kind) total += effect.amount;
+    }
+  }
+  return total;
+}
+
+/**
+ * Resolves one row into HP changes.
+ *
+ * Fixed pipeline, so the order of effects inside a card never matters:
+ *   1. per-card power (synergies, mirror, loner)
+ *   2. weaken — each side reduces the opponent's total
+ *   3. combat damage = |difference|, reduced by the loser's shield
+ *   4. burn (direct, ignores shield) and heal
+ */
+export function resolveBattle(input: BattleInput, hpMax: [number, number]): RoundResult {
+  const { sides, instances, config } = input;
+
+  const lines: [CardBattleLine[], CardBattleLine[]] = [
+    instances[0].map((inst, i) => lineFor(inst, sides[0].cards[i] as CardDef, sides, 0)),
+    instances[1].map((inst, i) => lineFor(inst, sides[1].cards[i] as CardDef, sides, 1)),
+  ];
+
+  const raw: [number, number] = [
+    lines[0].reduce((s, l) => s + l.total, 0),
+    lines[1].reduce((s, l) => s + l.total, 0),
+  ];
+
+  const weaken: [number, number] = [sumEffect(sides[0].cards, 'weaken'), sumEffect(sides[1].cards, 'weaken')];
+  const shield: [number, number] = [sumEffect(sides[0].cards, 'shield'), sumEffect(sides[1].cards, 'shield')];
+  const burn: [number, number] = [sumEffect(sides[0].cards, 'burn'), sumEffect(sides[1].cards, 'burn')];
+  const heal: [number, number] = [sumEffect(sides[0].cards, 'heal'), sumEffect(sides[1].cards, 'heal')];
+
+  const power: [number, number] = [Math.max(0, raw[0] - weaken[1]), Math.max(0, raw[1] - weaken[0])];
+
+  const diff = power[0] - power[1];
+  const winner: PlayerIndex | null = diff > 0 ? 0 : diff < 0 ? 1 : null;
+
+  let combat = Math.abs(diff) * config.damagePerPower;
+  if (config.maxRoundDamage > 0) combat = Math.min(combat, config.maxRoundDamage);
+
+  const hpDelta: [number, number] = [0, 0];
+  if (winner !== null) {
+    const loser = winner === 0 ? 1 : 0;
+    hpDelta[loser] -= Math.max(0, combat - shield[loser]);
+  }
+  hpDelta[0] += heal[0] - burn[1];
+  hpDelta[1] += heal[1] - burn[0];
+
+  const hpAfter: [number, number] = [
+    clamp(sides[0].hp + hpDelta[0], 0, hpMax[0]),
+    clamp(sides[1].hp + hpDelta[1], 0, hpMax[1]),
+  ];
+
+  return {
+    round: input.round,
+    lines,
+    raw,
+    power,
+    weaken,
+    shield,
+    burn,
+    heal,
+    hpDelta: [hpAfter[0] - sides[0].hp, hpAfter[1] - sides[1].hp],
+    winner,
+    hpAfter,
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return value < min ? min : value > max ? max : value;
+}
+
+/** Convenience wrapper used by the bot to score a hypothetical row. */
+export function rowPower(cards: CardDef[], opponent: CardDef[], pickedSecond = false, hp = 20, foeHp = 20): number {
+  const sides: [SideContext, SideContext] = [
+    { cards, hp, pickedSecond },
+    { cards: opponent, hp: foeHp, pickedSecond: !pickedSecond },
+  ];
+  let total = 0;
+  cards.forEach((card, i) => {
+    total += lineFor({ uid: `t${i}`, cardId: card.id, row: 0, slot: i }, card, sides, 0).total;
+  });
+  return total;
+}
+
+export function resolveLines(cards: CardDef[], opponent: CardDef[], pickedSecond = false): CardBattleLine[] {
+  const sides: [SideContext, SideContext] = [
+    { cards, hp: 20, pickedSecond },
+    { cards: opponent, hp: 20, pickedSecond: !pickedSecond },
+  ];
+  return cards.map((card, i) => lineFor({ uid: `t${i}`, cardId: card.id, row: 0, slot: i }, card, sides, 0));
+}
+
+export type { CardLookup };

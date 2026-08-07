@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.DS_Store
+*.log
+.env
+.env.local
+data/
+coverage/
+sim-*.json
