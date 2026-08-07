@@ -314,6 +314,11 @@ function nextFirstPicker(state: MatchState, roundWinner: PlayerIndex | null): Pl
 /**
  * The slice of state a given player is allowed to see. Future rows are hidden
  * unless that player peeked at them; the opponent's peek state is never sent.
+ *
+ * The seed is redacted, and that is not cosmetic. Every row is generated purely
+ * from it, so a client holding the seed can call `createMatch` and read the
+ * whole match — blanking `rows` while shipping `seed` hides nothing at all and
+ * makes Seer worthless. `rngState` goes for the same reason.
  */
 export function viewFor(state: MatchState, player: PlayerIndex): MatchState {
   const view: MatchState = structuredClone(state);
@@ -324,8 +329,13 @@ export function viewFor(state: MatchState, player: PlayerIndex): MatchState {
     return [];
   });
   view.players[other(player)].peekedRow = null;
+  view.seed = REDACTED_SEED;
+  view.rngState = 0;
   return view;
 }
+
+/** Placeholder left in a redacted view so the shape stays a valid MatchState. */
+export const REDACTED_SEED = '';
 
 /** True when the match cannot continue. */
 export function isOver(state: MatchState): boolean {

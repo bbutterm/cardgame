@@ -301,10 +301,21 @@ describe('match completion', () => {
   });
 
   it('ends early when a player reaches zero hp', () => {
-    let { state } = createMatch({ seed: 'lethal', firstPicker: 0, config: { startHp: 3, secondPickerHpBonus: 0 } });
-    let guard = 0;
-    while (state.phase !== 'gameOver' && guard++ < 200) state = takeAny(state).state;
-    expect(state.phase).toBe('gameOver');
-    expect(Math.min(state.players[0].hp, state.players[1].hp)).toBe(0);
+    // Which seed lands a knockout depends on the card numbers, so the rule is
+    // checked over a spread of matches instead of pinned to one seed that the
+    // next balance pass would quietly invalidate.
+    let knockouts = 0;
+    for (let i = 0; i < 20; i++) {
+      let { state } = createMatch({ seed: `lethal-${i}`, firstPicker: 0, config: { startHp: 3, secondPickerHpBonus: 0 } });
+      let guard = 0;
+      while (state.phase !== 'gameOver' && guard++ < 200) state = takeAny(state).state;
+      expect(state.phase).toBe('gameOver');
+
+      const lowest = Math.min(state.players[0].hp, state.players[1].hp);
+      if (lowest === 0) knockouts++;
+      // Stopping before the final row can only mean someone hit zero.
+      if (state.round < state.config.rounds - 1) expect(lowest).toBe(0);
+    }
+    expect(knockouts).toBeGreaterThan(0);
   });
 });

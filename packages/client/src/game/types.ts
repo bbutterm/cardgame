@@ -6,6 +6,8 @@ export type MatchStatus =
   | 'playing'
   /** The opponent dropped; the reconnect grace period is running. */
   | 'opponentAway'
+  /** This client lost its own connection and socket.io is retrying. */
+  | 'reconnecting'
   | 'over'
   | 'error';
 
@@ -36,8 +38,11 @@ export interface MatchController {
   notices: GameEvent[];
   emotes: EmoteMessage[];
   sendEmote: (key: string) => void;
-  rematch: (() => void) | null;
+  rematch: () => void;
+  /** This player has asked and is waiting on the opponent. */
   rematchPending: boolean;
+  /** The opponent has asked and is waiting on this player. */
+  opponentWantsRematch: boolean;
   leave: () => void;
   /** Rating delta once the server has scored the match. Null for bot games. */
   ratingDelta: number | null;

@@ -402,3 +402,132 @@ describe('hostile input', () => {
     a.close();
   });
 });
+
+/**
+ * Regressions for the findings of the security review. Each of these was a real
+ * hole, and each is cheap to leave a test on.
+ */
+describe('review regressions', () => {
+  it('never publishes a player id on the leaderboard', async () => {
+    // The id IS the credential: `identify` accepts whatever it is handed. An
+    // unauthenticated endpoint returning ids hands out the top accounts.
+    const response = await fetch(`http://127.0.0.1:${server.port}/api/leaderboard`);
+    const rows = (await response.json()) as Array<Record<string, unknown>>;
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(Object.keys(row)).not.toContain('id');
+      expect(JSON.stringify(row)).not.toMatch(/queue-[ab]-\d+/);
+    }
+  });
+
+  it('marks only the requesting player row as theirs', async () => {
+    const all = (await (await fetch(`http://127.0.0.1:${server.port}/api/leaderboard`)).json()) as Array<{
+      isYou?: boolean;
+    }>;
+    expect(all.filter((row) => row.isYou)).toHaveLength(0);
+  });
+
+  it('does not hand the client the seed that generates every row', async () => {
+    const [a, b] = await pair('seed');
+    const code = await a.createRoom();
+    await b.joinRoom(code);
+    await waitFor(() => !!a.snapshot);
+
+    // Rows are built purely from the seed, so shipping it would make the
+    // blanked-out `rows` pure theatre.
+    expect(a.snapshot!.state.seed).toBe('');
+    expect(a.snapshot!.state.rngState).toBe(0);
+
+    a.close();
+    b.close();
+  });
+
+  it('drops an emote that is not in the shared list', async () => {
+    const [a, b] = await pair('badmote');
+    const code = await a.createRoom();
+    await b.joinRoom(code);
+    await waitFor(() => !!a.snapshot && !!b.snapshot);
+
+    a.socket.emit('emote', 'ПРИВЕТ, Я ПРОИЗВОЛЬНЫЙ ТЕКСТ' as 'emote.gg');
+    a.socket.emit('emote', '<script>alert(1)</script>' as 'emote.gg');
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(b.emotes).toHaveLength(0);
+
+    // A legitimate one still gets through.
+    a.socket.emit('emote', 'emote.nice');
+    await waitFor(() => b.emotes.length > 0, 2000, 'valid emote');
+    expect(b.emotes[0]!.key).toBe('emote.nice');
+
+    a.close();
+    b.close();
+  });
+
+  it('refuses a second identity on one socket', async () => {
+    const a = new Client('ident-1', 'One');
+    await a.connected();
+    await a.identify();
+    const second = await new Promise<{ ok: boolean; code?: string }>((resolve) => {
+      a.socket.emit('identify', { id: 'ident-2', name: 'Two' }, (result) =>
+        resolve('ok' in result && result.ok ? { ok: true } : { ok: false, code: (result as { code: string }).code }),
+      );
+    });
+    expect(second.ok).toBe(false);
+    expect(second.code).toBe('rate_limited');
+    a.close();
+  });
+
+  it('does not orphan a room when a seated player joins another', async () => {
+    const [a, b] = await pair('orphan');
+    const first = await a.createRoom();
+    await b.joinRoom(first);
+    await waitFor(() => !!a.snapshot && !!b.snapshot);
+    const roomsBefore = server.stats().rooms;
+
+    // A creates a second room while still seated in the first. The abandoned
+    // seat used to become unreachable, leaking the room for the process life
+    // and leaving B playing out a match against a 20-second auto-picker.
+    const secondCode = await a.createRoom();
+    expect(secondCode).not.toBe(first);
+    await waitFor(() => b.opponentLeft > 0, 3000, 'opponent left notice');
+    expect(server.stats().rooms).toBeLessThanOrEqual(roomsBefore + 1);
+
+    a.close();
+    b.close();
+  });
+
+  it('refuses a rematch while the match is still live', async () => {
+    const [a, b] = await pair('livrematch');
+    const code = await a.createRoom();
+    await b.joinRoom(code);
+    await waitFor(() => !!a.snapshot && !!b.snapshot);
+    const matchId = a.snapshot!.matchId;
+    const seq = a.snapshot!.state.seq;
+
+    a.socket.emit('rematch');
+    b.socket.emit('rematch');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Same match, same position — a rematch mid-game would be an escape hatch
+    // from a losing board in a ranked match.
+    expect(a.snapshot!.matchId).toBe(matchId);
+    expect(a.snapshot!.state.seq).toBe(seq);
+
+    a.close();
+    b.close();
+  });
+
+  it('ends the match state on a forfeit, not just the scoring', async () => {
+    const [a, b] = await pair('forfeit');
+    await a.queue();
+    await b.queue();
+    await waitFor(() => !!a.snapshot && !!b.snapshot, 4000, 'quick match');
+
+    a.socket.emit('leaveRoom');
+    await waitFor(() => !!b.over, 4000, 'forfeit result');
+
+    // Without this the winner's board stays in `draft` forever and the result
+    // screen, which routes on the phase, never appears.
+    expect(b.over!.winner).toBe(b.snapshot!.seat);
+    b.close();
+  });
+});

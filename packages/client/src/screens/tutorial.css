@@ -12,7 +12,6 @@
 }
 
 .tutorial__skip {
-  width: auto;
   opacity: 0.6;
 }
 
@@ -62,10 +61,14 @@
   min-height: 0;
 }
 
+/* Same three-column track as the real board, so the tutorial shows cards at
+   the size and with the full text a player will actually meet in a match. */
 .tutorial__row {
-  display: flex;
-  gap: 0.4rem;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+  width: 100%;
+  padding-top: 6px;
 }
 
 .tutorial__fight {

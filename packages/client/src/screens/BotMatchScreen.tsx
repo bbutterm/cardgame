@@ -13,7 +13,7 @@ export function BotMatchScreen({ level, onHome }: { level: BotLevel; onHome: () 
   const [round, setRound] = useState(0);
   const controller = useBotMatch({ level });
 
-  if (controller.state?.phase === 'gameOver' && !controller.battle) {
+  if (controller.state && controller.status === 'over' && !controller.battle) {
     return (
       <ResultScreen
         state={controller.state}
@@ -22,7 +22,7 @@ export function BotMatchScreen({ level, onHome }: { level: BotLevel; onHome: () 
         unranked
         rematchPending={false}
         onRematch={() => {
-          controller.rematch?.();
+          controller.rematch();
           setRound((value) => value + 1);
         }}
         onHome={onHome}

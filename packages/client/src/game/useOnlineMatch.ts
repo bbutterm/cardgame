@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { GameEvent, MatchState, PlayerIndex, RoundResult } from '@delezh/engine';
+import type { MatchState, PlayerIndex } from '@delezh/engine';
 import type {
   ClientToServer,
   MatchOver,
@@ -9,7 +9,8 @@ import type {
   ServerToClient,
 } from '@delezh/protocol';
 import { loadProfile, updateProfile } from '../profile.js';
-import type { EmoteMessage, MatchController, MatchStatus } from './types.js';
+import { useMatchFeed } from './useMatchFeed.js';
+import type { MatchController, MatchStatus } from './types.js';
 
 export type OnlineStage =
   | { kind: 'connecting' }
@@ -23,22 +24,25 @@ export type OnlineStage =
  * Online match controller.
  *
  * The client holds no authority: it renders whatever snapshot the server sends
- * and forwards taps. A pick is sent optimistically only in the sense that the
- * button disables immediately — the board does not move until the server's
- * update lands, so a rejected action can never leave a phantom card on screen.
+ * and forwards taps. A pick disables the button immediately, but the board does
+ * not move until the server's update lands, so a rejected action can never leave
+ * a phantom card on screen.
  */
 export function useOnlineMatch() {
   const socketRef = useRef<Socket<ServerToClient, ClientToServer> | null>(null);
   const [stage, setStage] = useState<OnlineStage>({ kind: 'connecting' });
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(null);
-  const [battle, setBattle] = useState<RoundResult | null>(null);
-  const [notices, setNotices] = useState<GameEvent[]>([]);
-  const [emotes, setEmotes] = useState<EmoteMessage[]>([]);
   const [over, setOver] = useState<MatchOver | null>(null);
   const [awayUntil, setAwayUntil] = useState<number | null>(null);
   const [rematchPending, setRematchPending] = useState(false);
+  const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
+  /** True while *this* client is offline, as opposed to the opponent. */
+  const [selfOffline, setSelfOffline] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const emoteId = useRef(0);
+
+  const feed = useMatchFeed();
+  const feedRef = useRef(feed);
+  feedRef.current = feed;
 
   // Single socket for the lifetime of the screen.
   useEffect(() => {
@@ -54,6 +58,7 @@ export function useOnlineMatch() {
     const profile = loadProfile();
 
     const identify = () => {
+      setSelfOffline(false);
       socket.emit('identify', { id: profile.id, name: profile.name }, (result) => {
         if ('ok' in result && result.ok) {
           updateProfile({ rating: result.rating });
@@ -65,17 +70,21 @@ export function useOnlineMatch() {
     };
 
     socket.on('connect', identify);
-    socket.on('connect_error', () => setStage({ kind: 'error', message: 'error.offline' }));
-    socket.on('disconnect', () => setStage((c) => (c.kind === 'match' ? c : { kind: 'connecting' })));
+    socket.on('connect_error', () => {
+      setSelfOffline(true);
+      setStage((current) => (current.kind === 'match' ? current : { kind: 'error', message: 'error.offline' }));
+    });
+    socket.on('disconnect', () => setSelfOffline(true));
 
     socket.on('room', (room) => setStage({ kind: 'room', room }));
 
     socket.on('matchStart', (next) => {
       setSnapshot(next);
       setOver(null);
-      setBattle(null);
       setRematchPending(false);
+      setOpponentWantsRematch(false);
       setAwayUntil(null);
+      feedRef.current.reset();
       setStage({ kind: 'match' });
     });
 
@@ -85,23 +94,18 @@ export function useOnlineMatch() {
         if (current && current.matchId === next.matchId && current.state.seq > next.state.seq) return current;
         return next;
       });
-      const resolved = events.find((e): e is Extract<GameEvent, { t: 'battle' }> => e.t === 'battle');
-      if (resolved) setBattle(resolved.result);
-      const interesting = events.filter((e) => e.t === 'skip' || e.t === 'extraPick' || e.t === 'peek');
-      if (interesting.length > 0) setNotices(interesting);
+      feedRef.current.ingest(events);
     });
 
     socket.on('matchOver', (result) => setOver(result));
     socket.on('opponentLeft', () => setAwayUntil(null));
     socket.on('opponentAway', (until) => setAwayUntil(until));
     socket.on('opponentBack', () => setAwayUntil(null));
-    socket.on('rematchOffered', () => setRematchPending(false));
+    // Sent to the player who did NOT ask — it is an incoming offer, not an ack.
+    socket.on('rematchOffered', () => setOpponentWantsRematch(true));
     socket.on('queued', () => setStage({ kind: 'queued', since: Date.now() }));
 
-    socket.on('emote', (from, key) => {
-      emoteId.current += 1;
-      setEmotes((current) => [...current, { id: emoteId.current, from, key }]);
-    });
+    socket.on('emote', (from, key) => feedRef.current.pushEmote(from, key));
 
     return () => {
       socket.removeAllListeners();
@@ -110,23 +114,21 @@ export function useOnlineMatch() {
     };
   }, []);
 
-  // A one-second clock drives both the pick timer and the reconnect countdown.
+  const state: MatchState | null = snapshot?.state ?? null;
+  const me: PlayerIndex = snapshot?.seat ?? 0;
+  const finished = !!over || state?.phase === 'gameOver';
+
+  /**
+   * The clock only runs while something on screen depends on it. It used to
+   * tick forever, re-rendering the whole match tree four times a second on the
+   * menu and long after the match had ended.
+   */
+  const needsClock = (!!snapshot?.turnDeadline && !finished) || awayUntil !== null;
   useEffect(() => {
+    if (!needsClock) return;
     const timer = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (notices.length === 0) return;
-    const timer = window.setTimeout(() => setNotices([]), 1800);
-    return () => window.clearTimeout(timer);
-  }, [notices]);
-
-  useEffect(() => {
-    if (emotes.length === 0) return;
-    const timer = window.setTimeout(() => setEmotes((current) => current.slice(1)), 2600);
-    return () => window.clearTimeout(timer);
-  }, [emotes]);
+  }, [needsClock]);
 
   const createRoom = useCallback(() => {
     socketRef.current?.emit('createRoom', (result) => {
@@ -159,23 +161,23 @@ export function useOnlineMatch() {
     setStage({ kind: 'idle' });
   }, []);
 
-  const state: MatchState | null = snapshot?.state ?? null;
-  const me: PlayerIndex = snapshot?.seat ?? 0;
-
   const status: MatchStatus =
     stage.kind === 'error'
       ? 'error'
-      : over || state?.phase === 'gameOver'
+      : finished
         ? 'over'
-        : awayUntil !== null
-          ? 'opponentAway'
-          : stage.kind === 'match'
-            ? 'playing'
-            : stage.kind === 'connecting'
-              ? 'connecting'
-              : 'waiting';
+        : selfOffline
+          ? 'reconnecting'
+          : awayUntil !== null
+            ? 'opponentAway'
+            : stage.kind === 'match'
+              ? 'playing'
+              : stage.kind === 'connecting'
+                ? 'connecting'
+                : 'waiting';
 
-  const myTurn = !!state && state.phase === 'draft' && state.turn === me && !battle && awayUntil === null;
+  const myTurn =
+    !!state && state.phase === 'draft' && state.turn === me && !feed.battle && awayUntil === null && !selfOffline;
 
   const controller = useMemo<MatchController>(
     () => ({
@@ -187,27 +189,33 @@ export function useOnlineMatch() {
         if (!snapshot) return;
         socketRef.current?.emit('pick', snapshot.matchId, uid, () => undefined);
       },
-      timeLeftMs: snapshot?.turnDeadline != null && myTurn ? Math.max(0, snapshot.turnDeadline - now) : null,
-      battle,
-      dismissBattle: () => setBattle(null),
-      notices,
-      emotes,
+      /**
+       * Counts down whenever the server has a deadline — including while the
+       * battle overlay is up. The server's pick timer does not pause for the
+       * animation, so hiding the clock during it silently burned the player's
+       * next turn.
+       */
+      timeLeftMs: snapshot?.turnDeadline != null && !finished ? Math.max(0, snapshot.turnDeadline - now) : null,
+      battle: feed.battle,
+      dismissBattle: feed.dismissBattle,
+      notices: feed.notices,
+      emotes: feed.emotes,
       sendEmote: (key: string) => {
         socketRef.current?.emit('emote', key);
-        emoteId.current += 1;
-        setEmotes((current) => [...current, { id: emoteId.current, from: me, key }]);
+        feed.pushEmote(me, key);
       },
       rematch: () => {
         setRematchPending(true);
         socketRef.current?.emit('rematch');
       },
       rematchPending,
+      opponentWantsRematch,
       leave,
       ratingDelta: over?.ratingDelta ?? null,
       opponentName: snapshot?.opponent.name ?? null,
       reconnectSeconds: awayUntil !== null ? Math.max(0, Math.ceil((awayUntil - now) / 1000)) : null,
     }),
-    [state, me, status, myTurn, snapshot, battle, notices, emotes, rematchPending, leave, over, awayUntil, now],
+    [state, me, status, myTurn, snapshot, feed, rematchPending, opponentWantsRematch, leave, over, awayUntil, now, finished],
   );
 
   return { controller, stage, createRoom, joinRoom, startQueue, cancelQueue, leave, over };

@@ -8,11 +8,6 @@
   gap: 0.6rem;
 }
 
-.online__back {
-  width: auto;
-  flex: 0 0 auto;
-}
-
 .online__menu {
   margin-top: 1rem;
 }
@@ -84,9 +79,14 @@
   text-transform: uppercase;
 }
 
-.online__join-btn {
-  width: auto;
-  flex: 0 0 auto;
+/*
+ * The wide tracking is for the four-character code, not for the hint text —
+ * at 0.2em the placeholder "ВВЕДИ КОД" was clipped to "ВВЕДИ КО".
+ */
+.online__input::placeholder {
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  opacity: 0.5;
 }
 
 .online__spinner {

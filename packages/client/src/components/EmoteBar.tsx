@@ -1,21 +1,17 @@
 import { useState } from 'react';
 import type { PlayerIndex } from '@delezh/engine';
+import { EMOTE_KEYS } from '@delezh/protocol';
 import { useT, type MessageKey } from '../i18n/index.js';
 import type { EmoteMessage } from '../game/types.js';
 import { haptic, playSound } from '../audio.js';
 import './emote.css';
 
-/** Eight quick lines. Enough to be expressive, few enough to fit one sheet. */
-export const EMOTE_KEYS = [
-  'emote.gg',
-  'emote.nice',
-  'emote.wow',
-  'emote.thinking',
-  'emote.hurry',
-  'emote.oops',
-  'emote.sorry',
-  'emote.rematch',
-] as const satisfies readonly MessageKey[];
+/**
+ * Eight quick lines. The list lives in `@delezh/protocol` because the server
+ * rejects anything outside it — an unknown key would otherwise be rendered
+ * verbatim by the fallback in `t()`, turning emotes into a free-text channel.
+ */
+type _EmotesAreMessageKeys = typeof EMOTE_KEYS extends readonly MessageKey[] ? true : never;
 
 const EMOJI: Record<string, string> = {
   'emote.gg': '🤝',

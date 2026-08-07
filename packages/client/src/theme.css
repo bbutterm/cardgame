@@ -152,6 +152,21 @@ button {
   padding: 0.4rem 0.7rem;
 }
 
+/*
+ * Buttons are full-width by default because most of them are the only thing on
+ * their line. `--auto` shrinks one to its content.
+ *
+ * It lives here, after `.btn`, rather than as a `width: auto` in each screen's
+ * stylesheet: those have the same specificity as `.btn`, so which one won came
+ * down to the order Vite happened to concatenate the files in. It resolved
+ * against the screens, and the tutorial's "Skip" rendered as a full-width
+ * button more prominent than the tutorial itself.
+ */
+.btn--auto {
+  width: auto;
+  flex: 0 0 auto;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;

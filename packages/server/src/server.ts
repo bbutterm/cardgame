@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { Server, type Socket } from 'socket.io';
 import { isOver, other, type MatchConfig, type PlayerIndex } from '@delezh/engine';
 import {
+  isEmoteKey,
   isValidCode,
   protocolError,
   type ClientToServer,
@@ -45,13 +46,58 @@ const identities = new Map<string, { record: PlayerRecord; socketId: string }>()
 /** Quick-match queue of player ids, oldest first. */
 const queue: string[] = [];
 
+/**
+ * Per-socket token bucket. Every handler was previously unmetered, so a single
+ * socket could fill `identities` and the ratings file by looping `identify`
+ * with random ids, or flood the opponent with emotes.
+ */
+const buckets = new WeakMap<object, Map<string, { tokens: number; at: number }>>();
+
+function allow(socket: object, action: string, perSecond: number, burst: number): boolean {
+  let forSocket = buckets.get(socket);
+  if (!forSocket) {
+    forSocket = new Map();
+    buckets.set(socket, forSocket);
+  }
+  const now = Date.now();
+  const entry = forSocket.get(action) ?? { tokens: burst, at: now };
+  entry.tokens = Math.min(burst, entry.tokens + ((now - entry.at) / 1000) * perSecond);
+  entry.at = now;
+  if (entry.tokens < 1) {
+    forSocket.set(action, entry);
+    return false;
+  }
+  entry.tokens -= 1;
+  forSocket.set(action, entry);
+  return true;
+}
+
+/** Drops a player out of whatever room they are in, forfeiting a live match. */
+function releaseSeat(playerId: string, forfeit: boolean): void {
+  const room = rooms.roomOf(playerId);
+  if (!room) return;
+  const seat = rooms.seatOf(room, playerId);
+  if (seat !== null && forfeit && room.state && !isOver(room.state) && !room.scored) {
+    void finishMatch(room, seat).catch((error: unknown) => console.error('[forfeit]', error));
+  }
+  if (seat !== null) seatSocket(room.seats[other(seat)])?.emit('opponentLeft');
+  rooms.leave(room, playerId);
+}
+
 const http = createServer((req, res) => {
   // A tiny REST surface for things that do not need a socket.
   if (req.url?.startsWith('/api/leaderboard')) {
-    void repo.top(50).then((rows) => {
-      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      res.end(JSON.stringify(rows));
-    });
+    const viewer = new URL(req.url, 'http://localhost').searchParams.get('me') ?? undefined;
+    repo.top(50, viewer).then(
+      (rows) => {
+        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        res.end(JSON.stringify(rows));
+      },
+      (error: unknown) => {
+        console.error('[api] leaderboard failed:', error);
+        res.writeHead(500, { 'content-type': 'application/json' }).end('{"error":"internal"}');
+      },
+    );
     return;
   }
   if (req.url === '/api/health') {
@@ -102,6 +148,13 @@ async function finishMatch(room: Room, forfeitBy: PlayerIndex | null = null): Pr
   if (room.scored || !room.state) return;
   room.scored = true;
   room.turnDeadline = null;
+  // A forfeit ends the match as surely as running out of rows does. Without
+  // this the winner's board stays in `draft` forever and the result screen,
+  // which routes on the phase, never appears.
+  if (forfeitBy !== null) {
+    room.state.phase = 'gameOver';
+    room.state.winner = other(forfeitBy);
+  }
 
   const [a, b] = room.seats;
   const winner: PlayerIndex | null = forfeitBy !== null ? other(forfeitBy) : room.state.winner;
@@ -170,8 +223,17 @@ io.on('connection', (socket) => {
   const currentRoom = (): Room | undefined => (playerId ? rooms.roomOf(playerId) : undefined);
 
   socket.on('identify', (identity: PlayerIdentity, ack) => {
-    if (!identity?.id) return ack(protocolError('not_identified'));
+    if (!identity?.id || typeof identity.id !== 'string' || identity.id.length > 64) {
+      return ack(protocolError('not_identified'));
+    }
+    // One identity per socket: re-identifying was how a single connection could
+    // register unbounded players.
+    if (playerId !== null && playerId !== identity.id) {
+      return ack(protocolError('rate_limited', 'already identified'));
+    }
+    if (!allow(socket, 'identify', 1, 3)) return ack(protocolError('rate_limited'));
     void (async () => {
+      try {
       const record = await repo.ensure(identity.id, (identity.name ?? '').slice(0, 20));
       playerId = record.id;
       identities.set(record.id, { record, socketId: socket.id });
@@ -190,6 +252,10 @@ io.on('connection', (socket) => {
         }
       }
       ack({ ok: true, rating: record.rating });
+      } catch (error) {
+        console.error('[identify]', error);
+        ack(protocolError('internal'));
+      }
     })();
   });
 
@@ -197,8 +263,8 @@ io.on('connection', (socket) => {
     const identity = playerId ? identities.get(playerId) : undefined;
     if (!identity) return ack(protocolError('not_identified'));
 
-    const existing = rooms.roomOf(identity.record.id);
-    if (existing) rooms.leave(existing, identity.record.id);
+    if (!allow(socket, 'room', 1, 5)) return ack(protocolError('rate_limited'));
+    releaseSeat(identity.record.id, true);
 
     const room = rooms.create(true);
     rooms.sit(room, { record: identity.record, socketId: socket.id, awayUntil: null, wantsRematch: false });
@@ -210,11 +276,18 @@ io.on('connection', (socket) => {
     const identity = playerId ? identities.get(playerId) : undefined;
     if (!identity) return ack(protocolError('not_identified'));
 
-    const code = (rawCode ?? '').trim().toUpperCase();
+    if (!allow(socket, 'room', 1, 5)) return ack(protocolError('rate_limited'));
+    const code = String(rawCode ?? '').trim().toUpperCase();
     if (!isValidCode(code)) return ack(protocolError('room_not_found'));
 
     const room = rooms.get(code);
     if (!room) return ack(protocolError('room_not_found'));
+
+    // Joining a different room while already seated would orphan the old one:
+    // RoomStore keys players by id, so the abandoned seat becomes unreachable
+    // and its grace sweep never fires.
+    const current = rooms.roomOf(identity.record.id);
+    if (current && current.code !== code) releaseSeat(identity.record.id, true);
 
     // Rejoining a room you already sit in is a reconnect, not an error.
     const existingSeat = rooms.seatOf(room, identity.record.id);
@@ -240,20 +313,16 @@ io.on('connection', (socket) => {
   });
 
   socket.on('leaveRoom', () => {
-    const room = currentRoom();
-    if (!room || !playerId) return;
-    const seat = rooms.seatOf(room, playerId);
-    if (seat !== null && room.state && !isOver(room.state) && !room.scored) {
-      // Walking out of a live match is a forfeit, so it cannot be used to dodge
-      // a loss in a ranked game.
-      void finishMatch(room, seat);
-    }
-    seatSocket(room.seats[seat === 0 ? 1 : 0])?.emit('opponentLeft');
-    rooms.leave(room, playerId);
+    if (!playerId) return;
+    // Walking out of a live match forfeits it, so it cannot be used to dodge a
+    // loss in a ranked game.
+    releaseSeat(playerId, true);
   });
 
   socket.on('queue', (ack) => {
     if (!playerId || !identities.has(playerId)) return ack(protocolError('not_identified'));
+    if (!allow(socket, 'queue', 0.5, 3)) return ack(protocolError('rate_limited'));
+    releaseSeat(playerId, true);
     dequeue(playerId);
     queue.push(playerId);
     ack({ ok: true });
@@ -278,7 +347,7 @@ io.on('connection', (socket) => {
       const { events, finished } = advance(room, seat, { type: 'pick', uid });
       ack({ ok: true });
       pushUpdate(room, events);
-      if (finished) void finishMatch(room);
+      if (finished) void finishMatch(room).catch((e: unknown) => console.error('[finish]', e));
     } catch (error) {
       // The engine is the authority; a rejected action means the client's view
       // drifted, so re-sync it rather than just reporting an error.
@@ -291,14 +360,22 @@ io.on('connection', (socket) => {
   socket.on('emote', (key: string) => {
     const room = currentRoom();
     if (!room || !playerId) return;
+    // Anything not in the shared list is free text on the opponent's screen,
+    // because an unknown key falls back to rendering itself.
+    if (!isEmoteKey(key)) return;
+    if (!allow(socket, 'emote', 1, 4)) return;
     const seat = rooms.seatOf(room, playerId);
     if (seat === null) return;
-    seatSocket(room.seats[other(seat)])?.emit('emote', seat, String(key).slice(0, 32));
+    seatSocket(room.seats[other(seat)])?.emit('emote', seat, key);
   });
 
   socket.on('rematch', () => {
     const room = currentRoom();
     if (!room || !playerId) return;
+    // Without this, two rematch calls mid-match reseed a live board — an exit
+    // from a losing position in a ranked game.
+    if (!room.state || !isOver(room.state)) return;
+    if (!allow(socket, 'rematch', 1, 3)) return;
     const seat = rooms.seatOf(room, playerId);
     if (seat === null || !room.seats[seat]) return;
 
@@ -325,11 +402,16 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     if (!playerId) return;
+
+    // A dropped phone's old socket can linger for the whole ping timeout, so
+    // this can fire *after* the replacement socket has already reclaimed the
+    // seat. Touch nothing unless we are still the current socket for it.
+    const stillCurrent = identities.get(playerId)?.socketId === socket.id;
     dequeue(playerId);
 
     const room = rooms.roomOf(playerId);
     if (!room) {
-      identities.delete(playerId);
+      if (stillCurrent) identities.delete(playerId);
       return;
     }
 
@@ -339,7 +421,7 @@ io.on('connection', (socket) => {
     // The seat is held open for the grace period rather than freed, so a phone
     // that switched from wifi to cellular finds its match still waiting.
     const held = room.seats[seat];
-    if (held) {
+    if (held && held.socketId === socket.id) {
       held.socketId = null;
       if (room.state && !isOver(room.state)) {
         held.awayUntil = Date.now() + room.state.config.reconnectGraceMs;
@@ -366,7 +448,7 @@ function runTick(now: number): void {
         const turn = room.state.turn;
         const { events, finished } = advance(room, turn, { type: 'timeout' });
         pushUpdate(room, events);
-        if (finished) void finishMatch(room);
+        if (finished) void finishMatch(room).catch((e: unknown) => console.error('[tick]', e));
       } catch (error) {
         console.error('[tick] auto-pick failed:', error);
         room.turnDeadline = now + 5_000;
@@ -379,7 +461,7 @@ function runTick(now: number): void {
       if (!seat || seat.socketId !== null || seat.awayUntil === null || now < seat.awayUntil) continue;
 
       if (room.state && !isOver(room.state) && !room.scored) {
-        void finishMatch(room, index);
+        void finishMatch(room, index).catch((error: unknown) => console.error('[grace]', error));
       }
       seatSocket(room.seats[other(index)])?.emit('opponentLeft');
       rooms.leave(room, seat.record.id);

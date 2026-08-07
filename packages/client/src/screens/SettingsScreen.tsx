@@ -13,7 +13,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
   return (
     <div className="screen settings">
       <header className="settings__head">
-        <button type="button" className="btn btn--sm settings__back" onClick={onBack}>
+        <button type="button" className="btn btn--sm btn--auto settings__back" onClick={onBack}>
           ← {t('common.back')}
         </button>
         <h2>{t('settings.title')}</h2>

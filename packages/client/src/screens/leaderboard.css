@@ -8,11 +8,6 @@
   gap: 0.6rem;
 }
 
-.leaderboard__back {
-  width: auto;
-  flex: 0 0 auto;
-}
-
 .leaderboard__empty {
   margin: auto;
   text-align: center;

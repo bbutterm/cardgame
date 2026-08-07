@@ -25,7 +25,8 @@ export interface RatingRepository {
   /** Creates the record at the default rating if it does not exist yet. */
   ensure(id: string, name: string): Promise<PlayerRecord>;
   save(record: PlayerRecord): Promise<void>;
-  top(limit: number): Promise<LeaderboardRow[]>;
+  /** `viewerId` only marks the requester's own row; ids are never returned. */
+  top(limit: number, viewerId?: string): Promise<LeaderboardRow[]>;
 }
 
 export class InMemoryRatingRepository implements RatingRepository {
@@ -62,19 +63,25 @@ export class InMemoryRatingRepository implements RatingRepository {
     this.players.set(record.id, record);
   }
 
-  async top(limit: number): Promise<LeaderboardRow[]> {
+  async top(limit: number, viewerId?: string): Promise<LeaderboardRow[]> {
     return [...this.players.values()]
       .filter((player) => player.games > 0)
       .sort((a, b) => b.rating - a.rating || b.games - a.games)
       .slice(0, limit)
-      .map((player, index) => ({
-        rank: index + 1,
-        id: player.id,
-        name: player.name,
-        rating: player.rating,
-        games: player.games,
-        wins: player.wins,
-      }));
+      .map((player, index) => {
+        const row: LeaderboardRow = {
+          rank: index + 1,
+          name: player.name,
+          rating: player.rating,
+          games: player.games,
+          wins: player.wins,
+        };
+        // The player id is the entire authentication story — `identify` accepts
+        // whatever id it is handed — so publishing it on an unauthenticated
+        // endpoint would hand out the top players' accounts.
+        if (viewerId !== undefined && player.id === viewerId) row.isYou = true;
+        return row;
+      });
   }
 }
 

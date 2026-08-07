@@ -104,7 +104,6 @@
 }
 
 .match__peek {
-  flex: 0 0 auto;
   width: 2.6rem;
   min-height: 2.6rem;
   padding: 0;
@@ -188,8 +187,6 @@
 }
 
 .match__confirm-btn {
-  width: auto;
-  flex: 0 0 auto;
   padding: 0.6rem 1.2rem;
 }
 

@@ -9,11 +9,6 @@
   margin-bottom: 0.3rem;
 }
 
-.settings__back {
-  width: auto;
-  flex: 0 0 auto;
-}
-
 .settings__row {
   display: flex;
   align-items: center;

@@ -44,11 +44,34 @@ export interface MatchOver {
 
 export interface LeaderboardRow {
   rank: number;
-  id: string;
   name: string;
   rating: number;
   games: number;
   wins: number;
+  /** Set by the server for the requesting player. Never a raw id — see below. */
+  isYou?: boolean;
+}
+
+/**
+ * The emotes a client may send. The server rejects anything else outright:
+ * without this the field is a free-text channel straight into the opponent's
+ * face, since the client renders an unknown key verbatim as its own fallback.
+ */
+export const EMOTE_KEYS = [
+  'emote.gg',
+  'emote.nice',
+  'emote.wow',
+  'emote.thinking',
+  'emote.hurry',
+  'emote.oops',
+  'emote.sorry',
+  'emote.rematch',
+] as const;
+
+export type EmoteKey = (typeof EMOTE_KEYS)[number];
+
+export function isEmoteKey(value: unknown): value is EmoteKey {
+  return typeof value === 'string' && (EMOTE_KEYS as readonly string[]).includes(value);
 }
 
 /** Client -> server. */
@@ -78,6 +101,7 @@ export interface ServerToClient {
   /** Opponent dropped; `until` is a server timestamp for the grace deadline. */
   opponentAway: (until: number) => void;
   opponentBack: () => void;
+  /** The opponent has asked for a rematch and is waiting on this player. */
   rematchOffered: () => void;
   queued: (position: number) => void;
   error: (error: ProtocolError) => void;

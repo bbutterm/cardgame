@@ -16,19 +16,28 @@ export interface BattleInput {
   config: MatchConfig;
 }
 
-function count(counter: Counter, self: CardDef, sides: [SideContext, SideContext], side: PlayerIndex): number {
-  const target = counter.scope === 'self' ? sides[side] : sides[side === 0 ? 1 : 0];
+function count(
+  counter: Counter,
+  selfIndex: number,
+  sides: [SideContext, SideContext],
+  side: PlayerIndex,
+): number {
+  const own = counter.scope === 'self';
+  const target = own ? sides[side] : sides[side === 0 ? 1 : 0];
   let n = 0;
-  for (const card of target.cards) {
-    if (counter.excludeSelf && card === self) continue;
+  target.cards.forEach((card, index) => {
+    // Exclusion is by position, not by identity: two copies of one card share a
+    // single CardDef, so comparing objects would drop both — and would drop the
+    // opponent's copy too, which is never "self".
+    if (counter.excludeSelf && own && index === selfIndex) return;
     if (cardMatches(card, counter)) n++;
-  }
+  });
   return n;
 }
 
 function test(
   cond: Condition,
-  self: CardDef,
+  selfIndex: number,
   sides: [SideContext, SideContext],
   side: PlayerIndex,
 ): boolean {
@@ -36,7 +45,7 @@ function test(
   const foe = sides[side === 0 ? 1 : 0];
   switch (cond.type) {
     case 'count':
-      return count(cond.counter, self, sides, side) >= (cond.min ?? 1);
+      return count(cond.counter, selfIndex, sides, side) >= (cond.min ?? 1);
     case 'pickedSecond':
       return me.pickedSecond;
     case 'hpAtMost':
@@ -52,6 +61,7 @@ function lineFor(
   card: CardDef,
   sides: [SideContext, SideContext],
   side: PlayerIndex,
+  selfIndex: number,
 ): CardBattleLine {
   const base = card.power;
   let bonus = 0;
@@ -59,19 +69,19 @@ function lineFor(
   for (const effect of card.effects) {
     switch (effect.kind) {
       case 'powerIf':
-        if (test(effect.cond, card, sides, side)) bonus += effect.amount;
+        if (test(effect.cond, selfIndex, sides, side)) bonus += effect.amount;
         break;
       case 'powerPer':
-        bonus += effect.amount * count(effect.counter, card, sides, side);
+        bonus += effect.amount * count(effect.counter, selfIndex, sides, side);
         break;
       case 'mirrorStrongest': {
         // Base powers only — never other cards' bonuses — so two Mirror Idols
         // cannot feed each other and resolution stays order-independent.
         let strongest = 0;
-        for (const peer of sides[side].cards) {
-          if (peer === card) continue;
+        sides[side].cards.forEach((peer, index) => {
+          if (index === selfIndex) return;
           if (peer.power > strongest) strongest = peer.power;
-        }
+        });
         bonus += Math.max(0, strongest - base);
         break;
       }
@@ -115,8 +125,8 @@ export function resolveBattle(input: BattleInput, hpMax: [number, number]): Roun
   const { sides, instances, config } = input;
 
   const lines: [CardBattleLine[], CardBattleLine[]] = [
-    instances[0].map((inst, i) => lineFor(inst, sides[0].cards[i] as CardDef, sides, 0)),
-    instances[1].map((inst, i) => lineFor(inst, sides[1].cards[i] as CardDef, sides, 1)),
+    instances[0].map((inst, i) => lineFor(inst, sides[0].cards[i] as CardDef, sides, 0, i)),
+    instances[1].map((inst, i) => lineFor(inst, sides[1].cards[i] as CardDef, sides, 1, i)),
   ];
 
   const raw: [number, number] = [
@@ -177,7 +187,7 @@ export function rowPower(cards: CardDef[], opponent: CardDef[], pickedSecond = f
   ];
   let total = 0;
   cards.forEach((card, i) => {
-    total += lineFor({ uid: `t${i}`, cardId: card.id, row: 0, slot: i }, card, sides, 0).total;
+    total += lineFor({ uid: `t${i}`, cardId: card.id, row: 0, slot: i }, card, sides, 0, i).total;
   });
   return total;
 }
@@ -187,7 +197,7 @@ export function resolveLines(cards: CardDef[], opponent: CardDef[], pickedSecond
     { cards, hp: 20, pickedSecond },
     { cards: opponent, hp: 20, pickedSecond: !pickedSecond },
   ];
-  return cards.map((card, i) => lineFor({ uid: `t${i}`, cardId: card.id, row: 0, slot: i }, card, sides, 0));
+  return cards.map((card, i) => lineFor({ uid: `t${i}`, cardId: card.id, row: 0, slot: i }, card, sides, 0, i));
 }
 
 export type { CardLookup };

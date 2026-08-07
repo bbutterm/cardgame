@@ -85,11 +85,13 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
         <EmoteStream emotes={controller.emotes} me={me} />
 
         <div className={`match__turn ${controller.canPick ? 'is-mine' : ''}`}>
-          {controller.status === 'opponentAway'
-            ? t('online.opponentDisconnected', { seconds: controller.reconnectSeconds ?? 0 })
-            : controller.canPick
-              ? `${t('match.yourTurn')}${seconds !== null ? ` · ${seconds}` : ''}`
-              : t('match.opponentTurn')}
+          {controller.status === 'reconnecting'
+            ? t('online.reconnecting')
+            : controller.status === 'opponentAway'
+              ? t('online.opponentDisconnected', { seconds: controller.reconnectSeconds ?? 0 })
+              : controller.canPick
+                ? `${t('match.yourTurn')}${seconds !== null ? ` · ${seconds}` : ''}`
+                : t('match.opponentTurn')}
         </div>
 
         <OpenRow
@@ -118,7 +120,7 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
         <div className="match__bottom">
           <HpBar label={meName} hp={myPlayer.hp} maxHp={myPlayer.maxHp} compact />
           {canPeek && (
-            <button type="button" className="btn btn--sm match__peek" onClick={() => setPeeking(true)}>
+            <button type="button" className="btn btn--sm btn--auto match__peek" onClick={() => setPeeking(true)}>
               👁
             </button>
           )}
@@ -134,7 +136,7 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
               {getCard(selectedCard.cardId).text[locale] || t('match.tapToPick')}
             </div>
           </div>
-          <button type="button" className="btn btn--primary match__confirm-btn" onClick={() => confirm(selectedCard.uid)}>
+          <button type="button" className="btn btn--primary btn--auto match__confirm-btn" onClick={() => confirm(selectedCard.uid)}>
             {t('match.take')}
           </button>
         </div>
@@ -158,6 +160,10 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
 
       {controller.battle && (
         <BattleOverlay
+          // The overlay's reveal step is component state; without a key a second
+          // battle re-renders the same instance already past its last step and
+          // shows the outcome with no animation at all.
+          key={controller.battle.round}
           result={controller.battle}
           me={me}
           meName={meName}

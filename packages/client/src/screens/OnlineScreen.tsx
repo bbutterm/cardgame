@@ -41,7 +41,10 @@ export function OnlineScreen({ joinCode, onHome }: OnlineScreenProps) {
   };
 
   if (stage.kind === 'match' || controller.state) {
-    if (controller.state?.phase === 'gameOver' && !controller.battle) {
+    // `status` covers a forfeit too, where the match ends without this client
+    // ever seeing another board update. Routing on the phase alone left the
+    // winner staring at a frozen board after the opponent walked out.
+    if (controller.state && controller.status === 'over' && !controller.battle) {
       return (
         <ResultScreen
           state={controller.state}
@@ -50,6 +53,7 @@ export function OnlineScreen({ joinCode, onHome }: OnlineScreenProps) {
           unranked={false}
           onRematch={controller.rematch}
           rematchPending={controller.rematchPending}
+          opponentWantsRematch={controller.opponentWantsRematch}
           onHome={goHome}
         />
       );
@@ -72,7 +76,7 @@ export function OnlineScreen({ joinCode, onHome }: OnlineScreenProps) {
   return (
     <div className="screen online">
       <header className="online__head">
-        <button type="button" className="btn btn--sm online__back" onClick={goHome}>
+        <button type="button" className="btn btn--sm btn--auto online__back" onClick={goHome}>
           ← {t('common.back')}
         </button>
         <h2>{t('online.title')}</h2>
@@ -152,7 +156,7 @@ export function OnlineScreen({ joinCode, onHome }: OnlineScreenProps) {
             />
             <button
               type="button"
-              className="btn btn--sm online__join-btn"
+              className="btn btn--sm btn--auto"
               disabled={code.length !== CODE_LENGTH}
               onClick={() => joinRoom(code)}
             >

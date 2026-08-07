@@ -29,7 +29,7 @@ export function TutorialScreen({ onDone }: { onDone: () => void }) {
     <div className="screen tutorial">
       <div className="tutorial__head">
         <span className="tiny">{t('tutorial.step', { n: step + 1, total: TOTAL })}</span>
-        <button type="button" className="btn btn--ghost btn--sm tutorial__skip" onClick={onDone}>
+        <button type="button" className="btn btn--ghost btn--sm btn--auto tutorial__skip" onClick={onDone}>
           {t('common.skip')}
         </button>
       </div>
@@ -49,7 +49,7 @@ export function TutorialScreen({ onDone }: { onDone: () => void }) {
         {step === 0 && (
           <div className="tutorial__row">
             {ROW.slice(0, 3).map((id) => (
-              <CardView key={id} cardId={id} size="battle" />
+              <CardView key={id} cardId={id} size="full" />
             ))}
           </div>
         )}
@@ -60,7 +60,7 @@ export function TutorialScreen({ onDone }: { onDone: () => void }) {
               <CardView
                 key={id}
                 cardId={id}
-                size="battle"
+                size="full"
                 selected={taken === id}
                 dimmed={taken !== null && taken !== id}
                 onClick={

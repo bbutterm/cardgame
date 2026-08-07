@@ -12,7 +12,7 @@ export function LeaderboardScreen({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/leaderboard', { signal: controller.signal })
+    fetch(`/api/leaderboard?me=${encodeURIComponent(me.id)}`, { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
       .then((data: LeaderboardRow[]) => setRows(data))
       .catch((error: unknown) => {
@@ -25,7 +25,7 @@ export function LeaderboardScreen({ onBack }: { onBack: () => void }) {
   return (
     <div className="screen leaderboard">
       <header className="leaderboard__head">
-        <button type="button" className="btn btn--sm leaderboard__back" onClick={onBack}>
+        <button type="button" className="btn btn--sm btn--auto leaderboard__back" onClick={onBack}>
           ← {t('common.back')}
         </button>
         <h2>{t('leaderboard.title')}</h2>
@@ -44,11 +44,11 @@ export function LeaderboardScreen({ onBack }: { onBack: () => void }) {
             <span className="leaderboard__rating">{t('leaderboard.rating')}</span>
           </div>
           {rows.map((row) => (
-            <div className={`leaderboard__row ${row.id === me.id ? 'is-me' : ''}`} key={row.id}>
+            <div className={`leaderboard__row ${row.isYou ? 'is-me' : ''}`} key={row.rank}>
               <span className="leaderboard__rank">{row.rank}</span>
               <span className="leaderboard__name">
                 {row.name}
-                {row.id === me.id && <span className="leaderboard__you tiny"> · {t('leaderboard.you')}</span>}
+                {row.isYou && <span className="leaderboard__you tiny"> · {t('leaderboard.you')}</span>}
               </span>
               <span className="leaderboard__games">{row.games}</span>
               <span className="leaderboard__rating">{row.rating}</span>
