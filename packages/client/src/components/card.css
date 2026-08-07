@@ -1,0 +1,232 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow-hard-sm);
+  text-align: left;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 160ms ease;
+}
+
+.card--full {
+  /* Three across a 360px screen with gaps and page padding. */
+  aspect-ratio: 5 / 7;
+  width: 100%;
+}
+
+.card--battle {
+  /* Three per side must fit across 360px with gaps, and still be big enough
+     that the power badge popping is readable. */
+  aspect-ratio: 5 / 7;
+  width: 5.1rem;
+  flex: 0 0 auto;
+}
+
+.card--mini {
+  aspect-ratio: 5 / 7;
+  width: 3.1rem;
+  flex: 0 0 auto;
+  border-width: 2px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.card--tiny {
+  aspect-ratio: 1;
+  width: 1.9rem;
+  flex: 0 0 auto;
+  border-width: 2px;
+  box-shadow: none;
+  border-radius: 6px;
+}
+
+.card--ghost {
+  background: transparent;
+  border-style: dashed;
+  border-color: rgba(18, 16, 14, 0.28);
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------- parts */
+
+.card__art {
+  position: relative;
+  flex: 0 0 auto;
+  height: 52%;
+  border-bottom: var(--border) solid var(--ink);
+  overflow: hidden;
+}
+
+.card--mini .card__art,
+.card--tiny .card__art {
+  border-bottom-width: 2px;
+}
+
+.card--tiny .card__art {
+  height: 100%;
+  border-bottom: none;
+}
+
+.card__art-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card__power {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  min-width: 1.85em;
+  padding: 0.02em 0.18em;
+  border: var(--border) solid var(--ink);
+  border-radius: 8px 0 8px 0;
+  background: var(--paper);
+  font-size: 1.5rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.card__power.is-boosted {
+  background: var(--good);
+}
+
+.card__power.is-weakened {
+  background: var(--bad);
+  color: var(--paper);
+}
+
+.card--mini .card__power {
+  border-width: 2px;
+  font-size: 0.85rem;
+  border-radius: 5px 0 5px 0;
+}
+
+.card--tiny .card__power {
+  border-width: 2px;
+  font-size: 0.72rem;
+  border-radius: 4px 0 4px 0;
+}
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  flex: 1;
+  min-height: 0;
+  padding: 0.22rem 0.32rem;
+  overflow: hidden;
+}
+
+.card__name {
+  /*
+   * 0.78rem (~12px) is a floor, not a preference. At the 0.68rem this started
+   * at, the name rendered around 10px, and Chromium's hinting drops the breve
+   * off "Й" entirely at that size -- ЗЕРКАЛЬНЫЙ came out as ЗЕРКАЛЬНЫИ, which
+   * reads as a spelling mistake rather than as small text. Verified: the glyph
+   * is fine at every weight once the size is large enough.
+   *
+   * Sentence case, not uppercase: all-caps Cyrillic is harder to scan at card
+   * sizes and costs about 10% more width for the same string.
+   */
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  /* Two lines max: "Костровой гигант" must not push the rules text out. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card__text {
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.18;
+  opacity: 0.85;
+  /* Clamp rather than let the card's own overflow cut a word in half. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card--mini .card__body {
+  display: none;
+}
+
+.card--battle .card__name {
+  font-size: 0.7rem;
+}
+
+.card--battle .card__text {
+  font-size: 0.6rem;
+  -webkit-line-clamp: 2;
+}
+
+/* ---------------------------------------------------------------- factions */
+
+.card--beast .card__art { background: var(--beast); }
+.card--fire .card__art { background: var(--fire); }
+.card--shadow .card__art { background: var(--shadow); }
+.card--machine .card__art { background: var(--machine); }
+.card--neutral .card__art { background: var(--neutral); }
+
+.card--beast { background: color-mix(in srgb, var(--beast) 16%, var(--paper)); }
+.card--fire { background: color-mix(in srgb, var(--fire) 16%, var(--paper)); }
+.card--shadow { background: color-mix(in srgb, var(--shadow) 16%, var(--paper)); }
+.card--machine { background: color-mix(in srgb, var(--machine) 16%, var(--paper)); }
+.card--neutral { background: color-mix(in srgb, var(--neutral) 30%, var(--paper)); }
+
+/* Rarity is carried by the border treatment, never by colour — colour is
+   already spoken for by the faction. */
+.card--rare {
+  box-shadow: var(--shadow-hard-sm), inset 0 0 0 2px var(--paper), inset 0 0 0 4px var(--ink);
+}
+
+.card--epic {
+  border-width: 4px;
+  box-shadow: var(--shadow-hard-sm), inset 0 0 0 3px var(--accent), inset 0 0 0 5px var(--ink);
+}
+
+/* ------------------------------------------------------------------ states */
+
+.card:disabled {
+  cursor: default;
+}
+
+.card.is-dimmed {
+  opacity: 0.5;
+  filter: saturate(0.45);
+}
+
+.card.is-selected {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-hard-lg);
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  z-index: 2;
+}
+
+.card.is-active {
+  animation: card-pop 520ms ease;
+  z-index: 3;
+}
+
+button.card:active:not(:disabled) {
+  transform: translateY(-2px) scale(0.98);
+}
+
+@keyframes card-pop {
+  0% { transform: scale(1); box-shadow: var(--shadow-hard-sm); }
+  30% { transform: scale(1.12) rotate(-1.5deg); box-shadow: var(--shadow-hard-lg); }
+  100% { transform: scale(1); box-shadow: var(--shadow-hard-sm); }
+}

@@ -1,0 +1,252 @@
+/*
+ * Portrait phone layout. The board is the only element allowed to grow; the
+ * bands above and below it are fixed so the five open cards always land in the
+ * same place regardless of how many cards each side has taken.
+ */
+.match {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  height: 100%;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + 0.4rem) 0.6rem calc(var(--safe-bottom) + 0.4rem);
+  gap: 0.35rem;
+}
+
+/* ------------------------------------------------------------------- chrome */
+
+.match__top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.match__exit {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper);
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.match__round {
+  font-weight: 900;
+}
+
+.match__seat {
+  margin-left: auto;
+  opacity: 0.55;
+  text-align: right;
+  max-width: 9rem;
+}
+
+.match__timer {
+  height: 0.4rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+
+.match__timer-fill {
+  height: 100%;
+  background: var(--ink);
+  /* Linear, and matched to the 100ms tick, so the bar reads as a clock rather
+     than as an animation that might be lying. */
+  transition: width 100ms linear, background-color 200ms ease;
+}
+
+.match__timer-fill.is-urgent {
+  background: var(--bad);
+}
+
+/* -------------------------------------------------------------------- sides */
+
+.match__side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.match__taken {
+  display: flex;
+  gap: 0.25rem;
+  /* Fixed height whether or not there are cards, so the board never shifts. */
+  min-height: 3.7rem;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.match__taken::-webkit-scrollbar {
+  display: none;
+}
+
+.match__taken--empty {
+  opacity: 0.35;
+  justify-content: center;
+}
+
+.match__bottom {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Without this the bar sizes to its label and the value overlaps the name. */
+.match__bottom .hpbar {
+  flex: 1;
+  min-width: 0;
+}
+
+.match__peek {
+  flex: 0 0 auto;
+  width: 2.6rem;
+  min-height: 2.6rem;
+  padding: 0;
+  font-size: 1rem;
+}
+
+/* -------------------------------------------------------------------- board */
+
+.match__board {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 0;
+}
+
+.match__turn {
+  padding: 0.25rem 0.9rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper-2);
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.match__turn.is-mine {
+  background: var(--accent);
+  animation: turn-nudge 1.6s ease-in-out infinite;
+}
+
+.match__notices {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ------------------------------------------------------------------ confirm */
+
+.match__confirm {
+  position: fixed;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: calc(var(--safe-bottom) + 0.6rem);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow-hard-lg);
+  animation: confirm-in 160ms ease-out;
+}
+
+.match__confirm-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.match__confirm-name {
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match__confirm-text {
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match__confirm-btn {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.6rem 1.2rem;
+}
+
+/* --------------------------------------------------------------------- peek */
+
+.match__peek-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(18, 16, 14, 0.7);
+}
+
+.match__peek-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 24rem;
+  padding: 0.75rem;
+}
+
+.match__peek-cards {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 0.2rem;
+}
+
+.match__peek-cards::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes turn-nudge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes confirm-in {
+  from { transform: translateY(1rem); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Short phones (iPhone SE at 568px) cannot fit both taken strips at full size. */
+@media (max-height: 680px) {
+  .match__taken { min-height: 3rem; }
+  .card--mini { width: 2.4rem; }
+}
+
+/* Landscape or tablet: cap the width so cards do not become billboards. */
+@media (min-width: 560px) {
+  .match {
+    max-width: 30rem;
+    margin: 0 auto;
+  }
+}

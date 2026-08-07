@@ -1,0 +1,112 @@
+.emote__toggle {
+  flex: 0 0 auto;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow-hard-sm);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.emote__toggle:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+
+.emote__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.emote__sheet {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(var(--safe-bottom) + 4.5rem);
+  z-index: 41;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  animation: sheet-in 160ms ease-out;
+}
+
+.emote__option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.4rem;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper-2);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-align: left;
+  min-height: 2.75rem;
+}
+
+.emote__option:active {
+  background: var(--accent);
+}
+
+.emote__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emote__emoji {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.emote__stream {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  pointer-events: none;
+}
+
+.emote__bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 72%;
+  padding: 0.3rem 0.6rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: var(--shadow-hard-sm);
+  font-size: 0.8rem;
+  font-weight: 900;
+  animation: emote-in 220ms ease-out;
+}
+
+.emote__bubble.is-mine {
+  align-self: flex-end;
+  background: var(--accent);
+}
+
+.emote__bubble.is-theirs {
+  align-self: flex-start;
+}
+
+@keyframes emote-in {
+  from { transform: scale(0.7) translateY(6px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}

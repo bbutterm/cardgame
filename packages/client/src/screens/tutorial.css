@@ -1,0 +1,120 @@
+.tutorial {
+  gap: 0.9rem;
+  align-items: center;
+  text-align: center;
+}
+
+.tutorial__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.tutorial__skip {
+  width: auto;
+  opacity: 0.6;
+}
+
+.tutorial__dots {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.tutorial__dot {
+  width: 2.2rem;
+  height: 0.45rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  transition: background-color 220ms ease;
+}
+
+.tutorial__dot.is-on {
+  background: var(--accent);
+}
+
+.tutorial__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: 20rem;
+}
+
+.tutorial__title {
+  font-size: 1.5rem;
+}
+
+.tutorial__text {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  opacity: 0.72;
+  line-height: 1.35;
+}
+
+.tutorial__stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+}
+
+.tutorial__row {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.tutorial__fight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tutorial__fight-side {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tutorial__sum {
+  min-width: 2.2rem;
+  padding: 0.15rem 0.4rem;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--good);
+  font-size: 1.3rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.tutorial__sum--lose {
+  background: var(--bad);
+  color: var(--paper);
+}
+
+.tutorial__vs {
+  font-size: 1.1rem;
+  opacity: 0.4;
+}
+
+.tutorial__foot {
+  width: 100%;
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tutorial__prompt {
+  padding: 0.5rem 1rem;
+  border: 2px dashed var(--ink);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  animation: turn-nudge 1.4s ease-in-out infinite;
+}

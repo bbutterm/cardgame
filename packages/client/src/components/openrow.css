@@ -1,0 +1,29 @@
+.openrow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.openrow__line {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+  /* Both lines use the same three-column track so the two cards on the second
+     line sit exactly under the first and second of the line above, instead of
+     stretching to half the width each. */
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.openrow__line--2 {
+  /* Centre the pair under the trio. */
+  width: calc((100% - 0.9rem) / 3 * 2 + 0.45rem);
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.openrow__cell {
+  min-width: 0;
+  /* Room for the -6px lift of a selected card, so it is not clipped. */
+  padding-top: 6px;
+}

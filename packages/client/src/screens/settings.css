@@ -1,0 +1,56 @@
+.settings {
+  gap: 0.7rem;
+}
+
+.settings__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.3rem;
+}
+
+.settings__back {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 900;
+  text-align: left;
+}
+
+.settings__input {
+  flex: 1;
+  min-width: 0;
+  max-width: 11rem;
+  padding: 0.35rem 0.5rem;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper-2);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.settings__pill {
+  padding: 0.3rem 0.75rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper-2);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings__pill.is-on {
+  background: var(--accent);
+}

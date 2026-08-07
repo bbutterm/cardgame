@@ -1,0 +1,184 @@
+.battle {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--safe-top) + 0.5rem) 0.5rem calc(var(--safe-bottom) + 0.5rem);
+  background: rgba(18, 16, 14, 0.72);
+  backdrop-filter: blur(2px);
+  animation: battle-in 180ms ease;
+  overflow-y: auto;
+}
+
+.battle__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 26rem;
+  padding: 0.7rem 0.6rem;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow-hard-lg);
+}
+
+.battle__title {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  text-indent: 0.35em;
+  opacity: 0.6;
+}
+
+.battle__side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.battle__side-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.battle__running {
+  font-size: 1.35rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.battle__cards {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: center;
+  /* Three cards fit; a fourth (Quickstep lines) scrolls rather than shrinking
+     everything below the readable threshold. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 0.15rem;
+}
+
+.battle__cards::-webkit-scrollbar {
+  display: none;
+}
+
+.battle__card {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.battle__bonus {
+  position: absolute;
+  top: -0.35rem;
+  left: -0.3rem;
+  padding: 0.05rem 0.3rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  animation: bonus-pop 420ms ease-out;
+}
+
+.battle__bonus.is-up { background: var(--good); }
+.battle__bonus.is-down { background: var(--bad); color: var(--paper); }
+
+.battle__vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.15rem 0;
+  font-size: 1.6rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.35;
+  transition: opacity 220ms ease;
+}
+
+.battle__vs.is-on {
+  opacity: 1;
+}
+
+.battle__vs.is-on .battle__vs-num {
+  animation: bonus-pop 320ms ease-out;
+}
+
+.battle__vs-x {
+  font-size: 1rem;
+  opacity: 0.5;
+}
+
+.battle__result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.battle__result.is-on {
+  opacity: 1;
+  transform: none;
+}
+
+.battle__verdict {
+  padding: 0.3rem;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.battle__verdict--win { background: var(--good); }
+.battle__verdict--loss { background: var(--bad); color: var(--paper); }
+.battle__verdict--tie { background: var(--paper-2); }
+
+.battle__hp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.battle__notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: center;
+}
+
+.battle__note {
+  text-align: right;
+  opacity: 0.6;
+}
+
+.battle__actions {
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.battle__hint {
+  opacity: 0.45;
+}
+
+@keyframes battle-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bonus-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}

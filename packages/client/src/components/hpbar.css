@@ -1,0 +1,92 @@
+.hpbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.hpbar__label {
+  flex: 0 0 auto;
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 900;
+}
+
+.hpbar__track {
+  position: relative;
+  flex: 1;
+  height: 1.5rem;
+  min-width: 0;
+  border: var(--border) solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper-2);
+  overflow: visible;
+}
+
+.hpbar__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px 0 0 999px;
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1), background-color 300ms ease;
+}
+
+.hpbar--mirrored .hpbar__fill {
+  inset: 0 0 0 auto;
+  border-radius: 0 999px 999px 0;
+}
+
+.hpbar__fill--ok { background: var(--good); }
+.hpbar__fill--low { background: var(--accent); }
+.hpbar__fill--critical {
+  background: var(--bad);
+  animation: hp-pulse 900ms ease-in-out infinite;
+}
+
+.hpbar__value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  /* The number sits on top of a bar that can be any colour under it. */
+  text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper);
+}
+
+.hpbar__max {
+  font-size: 0.65rem;
+  opacity: 0.55;
+}
+
+.hpbar__delta {
+  position: absolute;
+  right: 0.2rem;
+  top: -0.15rem;
+  padding: 0.05rem 0.35rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  animation: delta-float 1100ms ease-out forwards;
+  pointer-events: none;
+}
+
+.hpbar__delta.is-down { background: var(--bad); color: var(--paper); }
+.hpbar__delta.is-up { background: var(--good); }
+
+.hpbar--compact .hpbar__track { height: 1.2rem; }
+
+@keyframes hp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes delta-float {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  25% { transform: translateY(-0.5rem) scale(1.15); opacity: 1; }
+  100% { transform: translateY(-1.6rem) scale(1); opacity: 0; }
+}

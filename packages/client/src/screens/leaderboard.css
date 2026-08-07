@@ -1,0 +1,67 @@
+.leaderboard {
+  gap: 0.8rem;
+}
+
+.leaderboard__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.leaderboard__back {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.leaderboard__empty {
+  margin: auto;
+  text-align: center;
+}
+
+.leaderboard__table {
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+
+.leaderboard__row {
+  display: grid;
+  grid-template-columns: 2rem 1fr 2.6rem 3.2rem;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 2px solid rgba(18, 16, 14, 0.1);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.leaderboard__row:last-child {
+  border-bottom: none;
+}
+
+.leaderboard__row--head {
+  opacity: 0.5;
+  border-bottom: 2px solid var(--ink);
+}
+
+.leaderboard__row.is-me {
+  background: var(--accent);
+  border-radius: 6px;
+}
+
+.leaderboard__rank,
+.leaderboard__games,
+.leaderboard__rating {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.leaderboard__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard__you {
+  opacity: 0.6;
+}

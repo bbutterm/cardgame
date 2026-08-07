@@ -1,0 +1,220 @@
+/*
+ * Neo-brutalism, mobile first.
+ *
+ * The rules: 3px black outlines, hard offset shadows with no blur, flat fills,
+ * heavy type, no gradients except inside card art. Everything is sized in rem
+ * off a root that scales slightly with the viewport, so a 360px phone and a
+ * 430px phone both get a full-bleed layout instead of a letterboxed one.
+ *
+ * No web fonts: the game must open instantly on a cold 3G connection and work
+ * offline as a PWA, and a 200KB display face is the single biggest thing that
+ * would stand in the way.
+ */
+
+:root {
+  --ink: #12100e;
+  --paper: #faf6ec;
+  --paper-2: #efe8d8;
+  --accent: #ffd93d;
+  --accent-2: #ff5e5b;
+  --good: #3ddc84;
+  --bad: #ff4d3d;
+
+  --beast: #7fd858;
+  --fire: #ff8c42;
+  --shadow: #b18aff;
+  --machine: #56cfe1;
+  --neutral: #e2dcc8;
+
+  --border: 3px;
+  --radius: 10px;
+  --shadow-hard: 4px 4px 0 var(--ink);
+  --shadow-hard-sm: 3px 3px 0 var(--ink);
+  --shadow-hard-lg: 6px 6px 0 var(--ink);
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Scales 15px at 360px wide up to 17px at 430px. */
+  font-size: clamp(15px, 3.9vw, 17px);
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  /* Text selection on a game board is only ever an accident. */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Repeating diagonal stripes so flat areas still read as a designed surface. */
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(18, 16, 14, 0.035) 0 2px,
+    transparent 2px 9px
+  );
+}
+
+#root {
+  height: 100%;
+  /* 100dvh accounts for the collapsing mobile browser chrome; the vh fallback
+     matters for older iOS Safari, which would otherwise clip the bottom bar. */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* ------------------------------------------------------------------ blocks */
+
+.brut {
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard);
+  background: var(--paper);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  /* 52px floor: comfortably above the 44px minimum tap target. */
+  min-height: 3.25rem;
+  padding: 0.75rem 1rem;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard);
+  background: var(--paper);
+  font-weight: 900;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  transition: transform 90ms ease, box-shadow 90ms ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn--primary {
+  background: var(--accent);
+}
+
+.btn--danger {
+  background: var(--accent-2);
+}
+
+.btn--ghost {
+  background: transparent;
+  box-shadow: none;
+}
+
+.btn--sm {
+  min-height: 2.5rem;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.7rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* --------------------------------------------------------------- utilities */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.grow {
+  flex: 1;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + 0.75rem) 0.75rem calc(var(--safe-bottom) + 0.75rem);
+}
+
+.muted {
+  opacity: 0.6;
+  font-weight: 700;
+}
+
+.tiny {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -138,4 +138,8 @@ export const en: Record<MessageKey, string> = {
   'emote.wow': 'Whoa',
   'emote.sorry': 'Sorry',
   'emote.rematch': 'Rematch?',
+
+  'error.generic': 'Something went wrong',
+  'error.offline': 'No connection to the server',
+  'error.illegalMove': 'You cannot do that',
 };

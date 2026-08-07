@@ -1,0 +1,103 @@
+.online {
+  gap: 0.9rem;
+}
+
+.online__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.online__back {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.online__menu {
+  margin-top: 1rem;
+}
+
+.online__status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin: auto 0;
+  text-align: center;
+}
+
+.online__status--error {
+  color: var(--bad);
+  font-weight: 900;
+}
+
+.online__room {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin: auto 0;
+  text-align: center;
+  width: 100%;
+}
+
+.online__code {
+  padding: 0.5rem 1.5rem;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--accent);
+  box-shadow: var(--shadow-hard-lg);
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  font-variant-numeric: tabular-nums;
+}
+
+.online__waiting {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.online__join {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem;
+}
+
+.online__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper-2);
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.online__join-btn {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.online__spinner {
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 3px solid var(--ink);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
