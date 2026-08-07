@@ -17,7 +17,7 @@ reason, so a later change can tell whether it is undoing something deliberate.
 | 5 | matchmaking + ELO + leaderboard | **done** |
 | 6 | i18n polish, in-match emotes, rematch | **done** |
 | 7 | sounds, touch gestures, tutorial | **done** |
-| 8 | experimental mechanics | pending |
+| 8 | experimental mechanics | **done** |
 
 ---
 
@@ -386,3 +386,57 @@ That gap *is* the skill gradient D-05 describes.
    Mote tests.
 3. **Ember Cascade is quiet** — 48%, but average power 1.6, because only five
    cards carry the Spark tag. Tags need more members before they carry a deck.
+
+---
+
+## Iteration 4 — tutorial, offline, deployability
+
+Three things that were nominally finished and were not.
+
+**The tutorial described the game instead of showing it.** It claimed "five
+cards on the table" over a picture of three, its "what you take, they lose" step
+had no opponent taking anything, and it never mentioned HP, the 3/2 split, or
+the timer — so a player met the 11/13 bars and a 20-second clock having been
+told about neither. Rewritten as an actual draft: five cards, a live countdown,
+and an opponent who visibly takes the biggest card left with a "that one is gone
+for good" callout. The fight in step 2 runs the drafted cards through the
+engine's own `resolveLines`, so the sums and the HP drop are real. 3.3 seconds to
+tap through; about 15 reading every line.
+
+**The PWA was blank on every offline reload.** Two defects stacked. The service
+worker precached the shell but not the hashed bundle, and caching lazily on
+first fetch cannot work because the worker only starts controlling the page
+after the first load has already fetched everything. Then, once precaching was
+fixed, the assets still would not serve: Vite emits its module script with
+`crossorigin`, so the browser sends an `Origin` header the precache fetch did
+not, and a response carrying `Vary` fails to match. The cache held the file and
+returned nothing. `ignoreVary` plus a by-pathname fallback.
+
+This path is worth the trouble: the engine, the bot and the card data all ship
+in the bundle, so a bot match has never needed a server. Verified with the
+network genuinely cut — the app boots, the tutorial renders, and a match starts.
+
+**`pnpm build` produced a server that could not start.** The workspace packages
+resolve to their TypeScript sources — their `main` points at `src/index.ts`,
+which is exactly what lets Vite and Vitest consume them with no build step — so
+`tsc` emitted JS importing `.js` paths that do not exist. Now bundled with
+esbuild into a single 53KB file plain Node runs, verified by starting it.
+
+The pattern in all three: each had been *written* and none had been *run* in the
+state that mattered — offline, from the build output, by someone who did not
+already know the rules.
+
+### Final state
+
+| check | result |
+|---|---|
+| tests | 156 across 9 files |
+| typecheck | clean, strict, all five packages |
+| build | client 98KB gzipped, server 53KB bundle |
+| cards outside 42–58% | 0 of 30 (shipping pool) |
+| first-picker win rate | 49.8–51.5% over 30,000 matches |
+| mobile | 320 / 360 / 430px, no overflow, no console errors |
+| online | full match in two browsers, room codes, emotes, reconnect |
+| offline | bot match playable with the network cut |
+
+Open items are listed at the end of iteration 3.
