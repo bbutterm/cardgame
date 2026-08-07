@@ -257,3 +257,132 @@ One test-harness bug worth recording, because it looked like a server bug: the
 match driver waited for player A's snapshot and then read player B's board.
 The server pushes to the two sockets independently, so B could still believe a
 card was available. The fix was in the test, not the server.
+
+---
+
+## Iteration 3 — review, hardening, experiments
+
+Run with four subagents working in parallel against fixed package boundaries: a
+tester on the engine, a balancer on the card data, a reviewer on the diff, and a
+tutorial rewrite. Their findings are summarised here; the detail is in the
+commits.
+
+### The reviewer found seven things that would have shipped
+
+The two worst were security, and the tester and the reviewer arrived at the
+first one independently from opposite directions:
+
+**`viewFor` blanked the future rows and shipped the seed.** Every row is
+generated purely from the seed, so a client holding it can call `createMatch`
+and read the entire match. Row hiding was theatre and Seer was worthless. Fixed
+in the engine rather than in the server, so every consumer is covered.
+
+**The leaderboard published each player's id, and the id is the whole
+authentication story** — `identify` accepts whatever it is handed. An
+unauthenticated `GET /api/leaderboard` was handing out the top accounts. Rows
+now carry a server-computed `isYou`.
+
+Also: no rate limit anywhere (one socket could fill the player table by looping
+`identify` with random ids); `emote` forwarded arbitrary text that the client
+renders verbatim through its unknown-key fallback; `rematch` mid-match reseeded
+a live board, which is an exit from a losing ranked game.
+
+Three correctness bugs worth recording because none of them are visible in a
+code read:
+
+- **`disconnect` nulled the seat unconditionally.** A dropped phone's old socket
+  lingers for up to the 25s ping timeout, so it could fire *after* the
+  replacement socket had already reclaimed the seat — wiping it, starting a
+  grace clock on a connected player, and forfeiting them. Reproducible on every
+  StrictMode mount.
+- **A forfeit scored the match but left the board in `draft`,** so the winner sat
+  on a frozen screen forever.
+- **The pick timer was hidden while the battle overlay was up,** but the server's
+  clock does not pause for an animation. Watching the replay silently burned
+  your next turn.
+
+### D-14 — the seat metric has a mediator problem, and one card falls in it
+
+The balancer proposed reclassifying `extraPick` from match win-rate to the
+seat-adjusted rate, where Quickstep reads a comfortable 49% instead of 55–59%.
+
+It is the wrong call, and the reason is worth writing down. The adjusted metric
+controls for *which pick index* a card was taken at. Quickstep's entire effect is
+to hand you an extra pick index. Controlling for the thing the card does
+subtracts away the card's value — pick index is a mediator here, not a
+confounder, and adjusting for a mediator removes the effect you are trying to
+measure.
+
+But match win-rate over-counts it for the Oracle Coin reason in reverse: a
+0-power card is only worth taking when the double pick converts, so it is
+selected into favourable positions and inherits their win rate.
+
+Quickstep's raw row win-rate is 49.1% against a field mean of 55.7% — the side
+holding it does *worse* in the row it is played in, while winning more matches.
+Neither number is the truth. It is the one card the framework cannot settle, and
+it is left alone and documented rather than tuned against a number that does not
+mean what it says. A counterfactual harness — re-simulating from the decision
+point with the next-best pick — is the obvious next thing to build.
+
+### D-15 — shield was being judged by a metric that cannot see it
+
+An experimental pure-shield card read **30%** on the adjusted rate. Shield can
+never win a row; it only reduces what losing one costs. A card carrying it is by
+construction on a body that expects to lose, so its row win-rate is guaranteed
+low however good the effect is.
+
+`shield` moved into the same bucket as `burn` and `heal`, where it always
+belonged. The base set never noticed because its only shield card also carries a
+tempo cost, which had already put it in the right bucket. On match win-rate the
+card reads 48%.
+
+### D-16 — the set is not the sum of its cards
+
+Every accepted experiment sits inside the corridor individually. Adding all of
+them to the pool still moves the first-picker win rate from **49.8% to 52.5%**,
+because most of them reward the three-card seat.
+
+That is why the experiments are opt-in — `createMatch` deals from the base 30 —
+and it is the strongest argument yet for measuring the pool and not just the
+cards. Six fair cards can make an unfair match, and no per-card corridor would
+ever catch it. The regression test now checks the shipping pool and the
+experimental pool separately and asserts the drift.
+
+### Engine bug the tester found
+
+`excludeSelf` excluded by `CardDef` object identity. `getCard` returns one shared
+object per id, so two copies of a card on one side deleted *each other* from
+their own count, and the opponent's copy counted as "self". Not reachable in a
+generated match — `buildRows` forbids duplicates inside a row — but reachable
+through the explicit-rows path and through any hand-built `rowPower()` call.
+Fixed positionally. The tester verified the old and new card numbers reproduce
+to 0.1% under the fixed engine, so no balance conclusion moved.
+
+### Where the numbers ended up
+
+Shipping pool, 30,000 matches across six seeds:
+
+| metric | value |
+|---|---|
+| first-picker win rate | **49.8–51.5%** |
+| cards outside 42–58% | **0 of 30** |
+| widest card | 45.6% – 56.2% |
+| regression-test margin (worst card) | 0.4 → **2.1 points** |
+| matches ending by knockout | 9.1% |
+
+`normal` vs `normal` now also holds the corridor completely (it did not before:
+Bulwark read 39.4%). `easy` vs `easy` still spreads 8 cards out of band, and
+that is left alone deliberately — the easy bot reads the printed number and
+nothing else, so it systematically misprices every card whose text matters.
+That gap *is* the skill gradient D-05 describes.
+
+### Known open items
+
+1. **Quickstep** — 55.5% on the conservative metric, unsettleable (D-14).
+2. **Bulwark and Warlord now play identically** — same power, same tempo cost,
+   and shield measured at roughly zero on a body that wins its rows. Different
+   factions keep them from being literally redundant. The real fix is to move
+   shield onto a card that expects to lose, which is what the experimental Aegis
+   Mote tests.
+3. **Ember Cascade is quiet** — 48%, but average power 1.6, because only five
+   cards carry the Spark tag. Tags need more members before they carry a deck.
