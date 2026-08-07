@@ -38,7 +38,10 @@ export type FirstPickerRule =
 export const DEFAULT_CONFIG: MatchConfig = {
   rounds: 5,
   rowSize: 5,
-  startHp: 20,
+  // 11/13 out of a swept grid: +2 lands the first-picker win rate on 49.6% at
+  // every HP level, and 11 is the value where the HP bar actually matters —
+  // ~18% of matches end by knockout and the loser finishes around 3 HP.
+  startHp: 11,
   secondPickerHpBonus: 2,
   damagePerPower: 1,
   maxRoundDamage: 0,

@@ -1,4 +1,4 @@
-import { CARDS, getCard, type CardDef } from '@delezh/cards';
+import { CARDS, getCard, type CardDef, type EffectKind } from '@delezh/cards';
 import {
   applyAction,
   createMatch,
@@ -35,10 +35,58 @@ export interface CardStats {
   wins: number;
   /** Wins / decided. */
   winRate: number;
+  /**
+   * Share of rows this card's side won, ties excluded.
+   *
+   * This is the metric to balance against. Match win-rate is biased for any
+   * card whose value depends on the holder's position — a card only taken from
+   * the two-card seat inherits that seat's win-rate no matter how strong it is.
+   * Row win-rate scores the card where it actually acts.
+   */
+  rowWinRate: number;
+  rowsDecided: number;
+  /**
+   * Row win-rate with the seat confound removed. THIS is the balance target.
+   *
+   * Raw row win-rate mostly measures *when* a card gets taken: the opening pick
+   * of a row belongs to the three-card side, which wins that row ~90% of the
+   * time, so any high-priority card scores ~95% regardless of its own strength.
+   * Here each pick is compared against the empirical win-rate of every pick made
+   * at the same index within a row, and the deltas are averaged. 50% means "no
+   * better than whatever else was taken from that seat".
+   */
+  adjustedRowWinRate: number;
   /** firstOutOfRow / appearances — a proxy for perceived pick priority. */
   priority: number;
   /** Mean power the card actually contributed in battle. */
   avgPower: number;
+  /** Which of the two rates this card is balanced against. */
+  metricName: 'adjusted' | 'match';
+  /** The value the 42–58% corridor is applied to. */
+  metric: number;
+}
+
+/**
+ * Effects whose payoff lands outside the row the card was played in: tempo
+ * debts, next-row pick order, information, and direct HP.
+ *
+ * A card carrying any of these is judged on match win-rate. Its row win-rate is
+ * structurally wrong — Void Titan wins the row it lands in almost every time and
+ * pays for it in the next one, so the adjusted row rate calls it broken while
+ * the match rate correctly calls it fair. Everything else resolves inside its
+ * own row and is judged on the adjusted row rate, which is far less noisy.
+ */
+const CROSS_ROW_KINDS = new Set<EffectKind>([
+  'skipNextPick',
+  'extraPick',
+  'firstPickerSelf',
+  'revealNextRow',
+  'burn',
+  'heal',
+]);
+
+export function isCrossRow(card: CardDef): boolean {
+  return card.effects.some((effect) => CROSS_ROW_KINDS.has(effect.kind));
 }
 
 export interface SimResult {
@@ -62,12 +110,43 @@ interface Accum {
   firstOutOfRow: number;
   decided: number;
   wins: number;
+  rowsDecided: number;
+  rowWins: number;
   powerSum: number;
   powerCount: number;
+  /** Row outcomes split by the pick index the card was taken at. */
+  bySeat: Map<number, { n: number; wins: number }>;
+}
+
+/**
+ * Row win-rate minus the win-rate every other card managed from the same seats,
+ * re-centred on 0.5. A card taken only from the opening seat is judged against
+ * other opening picks, not against the field.
+ */
+function adjust(a: Accum, baseline: Map<number, { n: number; wins: number }>): number {
+  let n = 0;
+  let delta = 0;
+  for (const [seat, own] of a.bySeat) {
+    const all = baseline.get(seat);
+    if (!all || all.n === 0) continue;
+    delta += own.wins - own.n * (all.wins / all.n);
+    n += own.n;
+  }
+  return n > 0 ? 0.5 + delta / n : 0.5;
 }
 
 function emptyAccum(): Accum {
-  return { appearances: 0, firstOutOfRow: 0, decided: 0, wins: 0, powerSum: 0, powerCount: 0 };
+  return {
+    appearances: 0,
+    firstOutOfRow: 0,
+    decided: 0,
+    wins: 0,
+    rowsDecided: 0,
+    rowWins: 0,
+    powerSum: 0,
+    powerCount: 0,
+    bySeat: new Map(),
+  };
 }
 
 export interface MatchOutcome {
@@ -79,6 +158,16 @@ export interface MatchOutcome {
   final: MatchState;
   /** Every resolved row, in order. */
   results: RoundResult[];
+  /** Every pick made, in order, with the seat it was made from. */
+  picked: PickRecord[];
+}
+
+export interface PickRecord {
+  round: number;
+  /** 0-based position of this pick within its row. */
+  seat: number;
+  player: PlayerIndex;
+  cardId: string;
 }
 
 /** Plays one full bot-vs-bot match and returns the outcome. */
@@ -89,8 +178,6 @@ export function playMatch(options: {
   cards?: readonly CardDef[];
   firstPicker?: PlayerIndex;
   random?: () => number;
-  /** Called for every pick, used by the simulator to collect card stats. */
-  onPick?: (player: PlayerIndex, cardId: string, firstOfRow: boolean) => void;
 }): MatchOutcome {
   const created = createMatch({
     seed: options.seed,
@@ -101,16 +188,19 @@ export function playMatch(options: {
   let state = created.state;
   let picks = 0;
   let guard = 0;
-  const rowStarted = new Set<number>();
   const results: RoundResult[] = [];
+  const picked: PickRecord[] = [];
+  const seatCounter = new Map<number, number>();
 
   while (state.phase !== 'gameOver' && guard++ < 500) {
     const player = state.turn;
+    const round = state.round;
     const uid = chooseCard(state, player, { level: options.levels[player], random: options.random });
     const instance = state.open.find((c) => c?.uid === uid);
-    const firstOfRow = !rowStarted.has(state.round);
-    rowStarted.add(state.round);
-    if (instance && options.onPick) options.onPick(player, instance.cardId, firstOfRow);
+    const seat = seatCounter.get(round) ?? 0;
+    seatCounter.set(round, seat + 1);
+    if (instance) picked.push({ round, seat, player, cardId: instance.cardId });
+
     const applied = applyAction(state, player, { type: 'pick', uid });
     state = applied.state;
     for (const event of applied.events) {
@@ -127,6 +217,7 @@ export function playMatch(options: {
     hp: [state.players[0].hp, state.players[1].hp],
     final: state,
     results,
+    picked,
   };
 }
 
@@ -149,6 +240,9 @@ export function simulate(options: SimOptions): SimResult {
     return entry;
   };
 
+  /** Row win-rate of every pick made at a given index, across all cards. */
+  const seatBaseline = new Map<number, { n: number; wins: number }>();
+
   let firstPickerWins = 0;
   let draws = 0;
   let decisive = 0;
@@ -161,7 +255,6 @@ export function simulate(options: SimOptions): SimResult {
     const seed = `${options.seed ?? 'sim'}#${mirrored ? Math.floor(i / 2) : i}`;
     const firstPicker: PlayerIndex = mirrored ? ((i % 2) as PlayerIndex) : ((rng.int(2) as PlayerIndex));
 
-    const taken: Array<{ player: PlayerIndex; cardId: string }> = [];
     const outcome = playMatch({
       seed,
       levels,
@@ -169,15 +262,37 @@ export function simulate(options: SimOptions): SimResult {
       cards,
       firstPicker,
       random: rng.next,
-      onPick: (player, cardId, firstOfRow) => {
-        taken.push({ player, cardId });
-        const entry = bump(cardId);
-        if (firstOfRow) entry.firstOutOfRow++;
-      },
     });
 
     for (const row of outcome.final.rows) {
       for (const instance of row) bump(instance.cardId).appearances++;
+    }
+
+    for (const record of outcome.picked) {
+      const entry = bump(record.cardId);
+      if (record.seat === 0) entry.firstOutOfRow++;
+
+      const result = outcome.results[record.round];
+      if (!result || result.winner === null) continue;
+      const won = result.winner === record.player;
+      entry.rowsDecided++;
+      if (won) entry.rowWins++;
+
+      let seat = entry.bySeat.get(record.seat);
+      if (!seat) {
+        seat = { n: 0, wins: 0 };
+        entry.bySeat.set(record.seat, seat);
+      }
+      seat.n++;
+      if (won) seat.wins++;
+
+      let baseline = seatBaseline.get(record.seat);
+      if (!baseline) {
+        baseline = { n: 0, wins: 0 };
+        seatBaseline.set(record.seat, baseline);
+      }
+      baseline.n++;
+      if (won) baseline.wins++;
     }
 
     for (const result of outcome.results) {
@@ -198,7 +313,7 @@ export function simulate(options: SimOptions): SimResult {
       winnerHpTotal += outcome.hp[outcome.winner];
       loserHpTotal += outcome.hp[other(outcome.winner)];
       const seen = new Set<string>();
-      for (const { player, cardId } of taken) {
+      for (const { player, cardId } of outcome.picked) {
         // A card is credited once per match per side that took it.
         const key = `${player}:${cardId}`;
         if (seen.has(key)) continue;
@@ -214,21 +329,31 @@ export function simulate(options: SimOptions): SimResult {
   }
 
   const cardStats: CardStats[] = [...stats.entries()]
-    .map(([id, a]) => ({
-      id,
-      appearances: a.appearances,
-      firstOutOfRow: a.firstOutOfRow,
-      decided: a.decided,
-      wins: a.wins,
-      winRate: a.decided > 0 ? a.wins / a.decided : 0.5,
-      priority: a.appearances > 0 ? a.firstOutOfRow / a.appearances : 0,
-      avgPower: a.powerCount > 0 ? a.powerSum / a.powerCount : getCard(id).power,
-    }))
-    .sort((x, y) => y.winRate - x.winRate);
+    .map(([id, a]) => {
+      const crossRow = isCrossRow(getCard(id));
+      const winRate = a.decided > 0 ? a.wins / a.decided : 0.5;
+      const adjustedRowWinRate = adjust(a, seatBaseline);
+      return {
+        id,
+        appearances: a.appearances,
+        firstOutOfRow: a.firstOutOfRow,
+        decided: a.decided,
+        wins: a.wins,
+        winRate,
+        rowsDecided: a.rowsDecided,
+        rowWinRate: a.rowsDecided > 0 ? a.rowWins / a.rowsDecided : 0.5,
+        adjustedRowWinRate,
+        priority: a.appearances > 0 ? a.firstOutOfRow / a.appearances : 0,
+        avgPower: a.powerCount > 0 ? a.powerSum / a.powerCount : getCard(id).power,
+        metricName: (crossRow ? 'match' : 'adjusted') as 'adjusted' | 'match',
+        metric: crossRow ? winRate : adjustedRowWinRate,
+      };
+    })
+    .sort((x, y) => y.metric - x.metric);
 
   const outOfBand = cardStats
-    .filter((c) => c.decided >= 30 && (c.winRate > 0.58 || c.winRate < 0.42))
-    .sort((x, y) => Math.abs(y.winRate - 0.5) - Math.abs(x.winRate - 0.5));
+    .filter((c) => c.rowsDecided >= 50 && (c.metric > 0.58 || c.metric < 0.42))
+    .sort((x, y) => Math.abs(y.metric - 0.5) - Math.abs(x.metric - 0.5));
 
   return {
     matches,

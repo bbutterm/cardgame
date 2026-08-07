@@ -46,6 +46,27 @@ describe('card data integrity', () => {
     }
   });
 
+  /**
+   * Rules text is written by hand while the numbers live in `effects`, so the
+   * two drift apart the moment a card is rebalanced. Every number that appears
+   * in the text must appear in the card's effects or its power.
+   */
+  it('quotes only numbers the card actually has', () => {
+    for (const card of ALL_CARDS) {
+      const available = new Set<number>([card.power]);
+      for (const effect of card.effects) {
+        if ('amount' in effect) available.add(effect.amount);
+        if (effect.kind === 'powerIf' && effect.cond.type === 'count') available.add(effect.cond.min ?? 1);
+      }
+      for (const locale of LOCALES) {
+        const quoted = card.text[locale].match(/\d+/g) ?? [];
+        for (const raw of quoted) {
+          expect(available.has(Number(raw)), `${card.id} [${locale}] mentions ${raw}, effects have ${[...available]}`).toBe(true);
+        }
+      }
+    }
+  });
+
   it('uses sane weights, copies and power', () => {
     for (const card of ALL_CARDS) {
       expect(card.weight, card.id).toBeGreaterThan(0);

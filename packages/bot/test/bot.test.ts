@@ -44,17 +44,24 @@ describe('bot', () => {
   });
 
   it('prices in the tempo cost of a skip card', () => {
-    // Warlord is 8 power but costs a whole pick; Colossus is 5 and free.
-    // The easy bot only reads numbers, the stronger ones should decline.
+    // Void Titan is 7 power but hands the opponent a free pick; Colossus is 4
+    // and costs nothing, which nets out ahead. The easy bot only reads the
+    // printed number, so it should fall for the bigger one.
     const { state } = createMatch({
       seed: 'tempo',
       firstPicker: 0,
-      rows: [['warlord', 'colossus', 'wanderer', 'ember', 'cog']],
+      rows: [['void-titan', 'colossus', 'wanderer', 'ember', 'cog']],
     });
-    const easy = state.open.find((c) => c?.uid === chooseCard(state, 0, { level: 'easy', random: () => 0.5 }))?.cardId;
-    const normal = state.open.find((c) => c?.uid === chooseCard(state, 0, { level: 'normal', random: () => 0.5 }))?.cardId;
-    expect(easy).toBe('warlord');
-    expect(normal).toBe('colossus');
+    const pickOf = (level: BotLevel) =>
+      state.open.find((c) => c?.uid === chooseCard(state, 0, { level, random: () => 0.5 }))?.cardId;
+
+    expect(pickOf('easy')).toBe('void-titan');
+    expect(pickOf('normal')).toBe('colossus');
+    // Hard opens with Wanderer here: its rollout finds that letting the
+    // opponent have Colossus and taking Void Titan on the next turn ends the
+    // row 10-6 instead of 8-8. Both stronger levels agree on the one thing this
+    // test is about — do not open by paying the tempo cost.
+    expect(pickOf('hard')).not.toBe('void-titan');
   });
 
   it('beats a weaker bot more often than not', () => {
@@ -105,7 +112,13 @@ describe('bot-vs-bot integration', () => {
           expect(outcome.hp[player]).toBeLessThanOrEqual(outcome.final.players[player].maxHp);
         }
         if (outcome.winner !== null && outcome.hp[other(outcome.winner)] > 0) {
-          expect(outcome.hp[outcome.winner]).toBeGreaterThan(outcome.hp[other(outcome.winner)]);
+          const loser = other(outcome.winner);
+          expect(outcome.hp[outcome.winner]).toBeGreaterThanOrEqual(outcome.hp[loser]);
+          // Equal HP after five rows is broken by rows won, never arbitrarily.
+          if (outcome.hp[outcome.winner] === outcome.hp[loser]) {
+            const players = outcome.final.players;
+            expect(players[outcome.winner].roundsWon).toBeGreaterThan(players[loser].roundsWon);
+          }
         }
       }
     }

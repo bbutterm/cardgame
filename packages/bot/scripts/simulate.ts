@@ -53,13 +53,18 @@ export function report(r: SimResult): void {
   console.log(`avg picks per match   : ${r.avgPicksPerMatch.toFixed(1)}`);
   console.log(`avg hp winner / loser : ${r.avgWinnerHp.toFixed(1)} / ${r.avgLoserHp.toFixed(1)}`);
 
-  console.log('\ncard                 wr      prio   avgPow  seen');
-  console.log('-'.repeat(52));
+  // The starred column is the one the corridor is applied to: adjWR for cards
+  // that resolve inside their row, matchWR for cards whose payoff lands in a
+  // later row (tempo, pick order, information, direct HP).
+  console.log('\ncard                  adjWR   matchWR   prio   avgPow   seen');
+  console.log('-'.repeat(64));
   for (const card of r.cards) {
     const def = getCard(card.id);
-    const flag = card.winRate > 0.58 || card.winRate < 0.42 ? ' <<<' : '';
+    const flag = card.metric > 0.58 || card.metric < 0.42 ? ' <<<' : '';
+    const adj = card.metricName === 'adjusted' ? `*${pct(card.adjustedRowWinRate)}` : ` ${pct(card.adjustedRowWinRate)}`;
+    const match = card.metricName === 'match' ? `*${pct(card.winRate)}` : ` ${pct(card.winRate)}`;
     console.log(
-      `${card.id.padEnd(20)} ${pct(card.winRate).padStart(6)}  ${pct(card.priority).padStart(6)}  ${card.avgPower
+      `${card.id.padEnd(20)} ${adj.padStart(7)}   ${match.padStart(7)}  ${pct(card.priority).padStart(6)}  ${card.avgPower
         .toFixed(1)
         .padStart(5)}  ${String(card.appearances).padStart(5)}  (p${def.power})${flag}`,
     );
