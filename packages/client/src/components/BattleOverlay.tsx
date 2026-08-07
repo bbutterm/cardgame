@@ -72,6 +72,10 @@ export function BattleOverlay({ result, me, meName, themName, maxHp, onDone }: B
   );
   const activeUid = revealed > 0 && revealed <= sequence.length ? sequence[revealed - 1]?.uid : undefined;
 
+  /** Sum of the cards revealed so far on one side. */
+  const runningOf = (side: PlayerIndex) =>
+    result.lines[side].reduce((sum, line) => (revealedUids.has(line.uid) ? sum + line.total : sum), 0);
+
   const skip = () => (finished ? onDone() : setStep(totalSteps));
 
   const verdict =
@@ -102,10 +106,15 @@ export function BattleOverlay({ result, me, meName, themName, maxHp, onDone }: B
           showTotal={showTotals}
         />
 
+        {/*
+          Counts up with the reveal rather than sitting on "?" while the side
+          headings already show a running total — two numbers for the same thing,
+          one of them a question mark, was the confusing part.
+        */}
         <div className={`battle__vs ${showTotals ? 'is-on' : ''}`}>
-          <span className="battle__vs-num">{showTotals ? result.power[them] : '?'}</span>
+          <span className="battle__vs-num">{showTotals ? result.power[them] : runningOf(them)}</span>
           <span className="battle__vs-x">×</span>
-          <span className="battle__vs-num">{showTotals ? result.power[me] : '?'}</span>
+          <span className="battle__vs-num">{showTotals ? result.power[me] : runningOf(me)}</span>
         </div>
 
         <BattleSide

@@ -110,6 +110,7 @@ describe('dictionary is fully wired', () => {
     /^difficulty\./, // `difficulty.${level}` and `.hint`
     /^faction\./, // `faction.${card.faction}`
     /^tutorial\.s\d/, // `tutorial.s${step + 1}.title`
+    /^tutorial\.(denied|timeUp)$/, // `tutorial.${flash}`
     /^battle\.round/, // chosen from a verdict variable
     /^result\.(victory|defeat|draw)$/, // chosen from a headline variable
     /^emote\./, // iterated from EMOTE_KEYS
