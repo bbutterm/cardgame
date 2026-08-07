@@ -83,6 +83,10 @@ const CROSS_ROW_KINDS = new Set<EffectKind>([
   'revealNextRow',
   'burn',
   'heal',
+  // Shield cannot win a row — it only reduces what losing one costs. Judging it
+  // on row win rate scored a pure shield card at 30%, because the body carrying
+  // it is by definition a body that expects to lose.
+  'shield',
 ]);
 
 export function isCrossRow(card: CardDef): boolean {

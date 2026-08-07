@@ -6,7 +6,7 @@
  *   pnpm balance
  *   pnpm balance --matches 600 --grid hp
  */
-import { ALL_CARDS } from '@delezh/cards';
+import { ALL_CARDS, CARDS } from '@delezh/cards';
 import type { FirstPickerRule, MatchConfig } from '@delezh/engine';
 import { createRng } from '@delezh/engine';
 import { playMatch } from '../src/simulate.js';
@@ -31,7 +31,13 @@ interface Row {
   avgLoserHp: number;
 }
 
-function run(label: string, config: Partial<MatchConfig>): Row {
+/** The experimental grid swaps the card pool rather than the match config. */
+const POOLS: Record<string, readonly (typeof ALL_CARDS)[number][]> = {
+  base: CARDS,
+  all: ALL_CARDS,
+};
+
+function run(label: string, config: Partial<MatchConfig>, pool: readonly (typeof ALL_CARDS)[number][] = ALL_CARDS): Row {
   const rng = createRng(`balance-${label}`);
   let firstWins = 0;
   let decisive = 0;
@@ -46,7 +52,7 @@ function run(label: string, config: Partial<MatchConfig>): Row {
       seed: `balance#${Math.floor(i / 2)}`,
       levels: LEVELS,
       config,
-      cards: ALL_CARDS,
+      cards: pool,
       firstPicker: (i % 2) as 0 | 1,
       random: rng.next,
     });
@@ -102,6 +108,23 @@ const grids: Record<string, Array<{ label: string; config: Partial<MatchConfig> 
 };
 
 const grid = grids[GRID];
+if (GRID === 'pool') {
+  console.log(`\n=== card pools, ${MATCHES} matches each, ${LEVELS.join(' vs ')} ===\n`);
+  console.log('pool              first%   lethal%  draw%   rows   margin  loserHp');
+  console.log('-'.repeat(70));
+  for (const [name, pool] of Object.entries(POOLS)) {
+    const r = run(name, {}, pool);
+    const flag = r.firstPickerWinRate >= 0.46 && r.firstPickerWinRate <= 0.54 ? '' : '  <<<';
+    console.log(
+      `${(name + ` (${pool.length})`).padEnd(17)} ${(r.firstPickerWinRate * 100).toFixed(1).padStart(5)}   ${(
+        r.lethalRate * 100
+      ).toFixed(1).padStart(6)}  ${(r.drawRate * 100).toFixed(1).padStart(5)}  ${r.avgRounds.toFixed(2).padStart(5)}  ${r.avgMargin
+        .toFixed(1)
+        .padStart(6)}  ${r.avgLoserHp.toFixed(1).padStart(6)}${flag}`,
+    );
+  }
+  process.exit(0);
+}
 if (!grid) {
   console.error(`unknown grid "${GRID}". available: ${Object.keys(grids).join(', ')}`);
   process.exit(1);
