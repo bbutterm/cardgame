@@ -11,12 +11,12 @@ reason, so a later change can tell whether it is undoing something deliberate.
 | # | Item | State |
 |---|------|-------|
 | 1 | engine + cards + tests + balance simulator | **done** |
-| 2 | client: bot match end-to-end on mobile | in progress |
-| 3 | procedural SVG cards, neo-brutalist theme, battle animation | pending |
-| 4 | server: rooms by code, online 1v1, reconnect | pending |
-| 5 | matchmaking + ELO + leaderboard | pending |
-| 6 | i18n polish, in-match emotes, rematch | pending |
-| 7 | sounds, touch gestures, tutorial | pending |
+| 2 | client: bot match end-to-end on mobile | **done** |
+| 3 | procedural SVG cards, neo-brutalist theme, battle animation | **done** |
+| 4 | server: rooms by code, online 1v1, reconnect | **done** |
+| 5 | matchmaking + ELO + leaderboard | **done** |
+| 6 | i18n polish, in-match emotes, rematch | **done** |
+| 7 | sounds, touch gestures, tutorial | **done** |
 | 8 | experimental mechanics | pending |
 
 ---
@@ -173,3 +173,87 @@ tempo bomb the opponent could not have afforded anyway. Deny now includes the
 opponent's tempo cost.
 
 Hard beats easy about 70% of the time.
+
+---
+
+## Iteration 2 — client, art, server
+
+### What shipped
+
+A playable game. `pnpm dev` brings up the server on :8787 and the client on
+:5173; a match against the bot needs neither.
+
+Client: React 19 + Vite, portrait-first, PWA. **95KB gzipped.** No web font (a
+display face would be the single largest asset and the game must open on a cold
+mobile connection), no animation library (CSS keyframes cover every effect
+here), no router (six screens and one state machine).
+
+Server: authoritative Socket.io. Clients send intent, never state.
+
+### Decisions
+
+**D-08 — Two-step picking.** Tap selects, a confirm bar slides up, TAKE commits.
+Double-tap and swipe-up are shortcuts for players who have learned the game. A
+single-tap-to-pick would be one interaction cheaper and occasionally
+catastrophic: the pick is irreversible, the timer is 20s, and a thumb travelling
+across a five-card grid brushes cards it did not mean to.
+
+**D-09 — Taken slots keep their footprint.** An emptied slot becomes a dashed
+ghost rather than collapsing. Reflowing the row under a thumb that is already
+moving is the worst failure mode a touch layout has, and it costs nothing to
+avoid.
+
+**D-10 — Both taken-card strips reserve height even when empty.** Same reason:
+the five open cards land in exactly the same place in every row of every match.
+
+**D-11 — Sound is synthesised, not sampled.** Eight effects from a WebAudio
+oscillator with an exponential decay. Sample files would outweigh the entire
+rest of the bundle for a set of blips a synth does well. The context is created
+lazily on the first gesture, because mobile browsers refuse otherwise.
+
+**D-12 — The client renders the server's snapshot and nothing else.** Picking
+disables the button immediately, but the board does not move until the server's
+update arrives, so a rejected action can never leave a phantom card on screen.
+Snapshots carry a monotonic `seq` and out-of-order ones are dropped.
+
+**D-13 — One process-wide tick, not per-room timers.** Pick timeouts, reconnect
+grace and room sweeping all run off a single 500ms interval. Per-room
+`setTimeout`s leak every time a room ends through a path that forgot to clear
+them, and a card game has several such paths (forfeit, disconnect, rematch).
+
+### Two defects the screenshots caught
+
+Both were invisible in code review and obvious the moment the app was rendered
+at 360px and looked at.
+
+**The board was grey for half the match.** `dimmed` was applied to every open
+card while the opponent was thinking. Faction colour is the primary signal a
+player reads when scanning a row, and it was being drained away exactly when
+they had time to study the board. Whose turn it is comes from the banner and the
+timer; the cards do not need to say it too.
+
+**Russian card names lost their diacritics.** ЗЕРКАЛЬНЫЙ rendered as
+ЗЕРКАЛЬНЫИ — the breve on Й simply absent, which reads as a spelling mistake
+rather than as small text. Ruled out font weight, `letter-spacing`,
+`text-transform` and the line clamp one at a time; the cause was size. At the
+~10px the names were rendering, Chromium's hinting drops the mark entirely.
+Names are now 12px and sentence case (all-caps Cyrillic is harder to scan at
+card sizes and costs ~10% more width). This is a floor, not a preference — it is
+noted in the CSS so it does not get "optimised" back down.
+
+### Verification
+
+Playwright, 320 / 360 / 430px portrait: a full match plays to a result, no
+horizontal overflow at any width, no console errors. Two real browsers against
+`pnpm dev`: room code, join, emote relay, 25 picks, 10 battle overlays, opposite
+results on the two screens.
+
+Server: 12 end-to-end tests over real sockets — off-turn picks refused, future
+rows absent from the payload rather than merely hidden, quick-match ELO equal
+and opposite, seat reclaimed on reconnect, forfeit after the grace period,
+hostile input survived.
+
+One test-harness bug worth recording, because it looked like a server bug: the
+match driver waited for player A's snapshot and then read player B's board.
+The server pushes to the two sockets independently, so B could still believe a
+card was available. The fix was in the test, not the server.
