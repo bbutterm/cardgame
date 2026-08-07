@@ -169,6 +169,16 @@
   animation: turn-nudge 1.6s ease-in-out infinite;
 }
 
+.match__flash {
+  background: var(--bad);
+  color: var(--paper);
+  animation: confirm-in 160ms ease-out;
+}
+
+.match__hint {
+  opacity: 0.35;
+}
+
 .match__notices {
   display: flex;
   gap: 0.3rem;

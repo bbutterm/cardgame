@@ -124,6 +124,14 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
           interactive={controller.canPick}
         />
 
+        {controller.flash && <div className="match__flash chip">{t(controller.flash as 'error.generic')}</div>}
+
+        {/* The long press is the only way to read a clamped card, and an
+            affordance nobody is told about does not exist. Shown in row 1 only. */}
+        {state.round === 0 && controller.notices.length === 0 && !selectedCard && (
+          <div className="match__hint tiny">{t('match.tapToRead')}</div>
+        )}
+
         {controller.notices.length > 0 && (
           <div className="match__notices">
             {controller.notices.map((notice, index) => (

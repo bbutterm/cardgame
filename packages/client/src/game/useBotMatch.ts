@@ -146,6 +146,8 @@ export function useBotMatch({ level }: BotMatchOptions): MatchController {
       rematch: () => setSeed(newSeed()),
       rematchPending: false,
       opponentWantsRematch: false,
+      opponentLeft: false,
+      flash: null,
       leave: () => undefined,
       ratingDelta: null,
       opponentName: null,

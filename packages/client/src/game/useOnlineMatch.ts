@@ -38,6 +38,8 @@ export function useOnlineMatch() {
   const [opponentWantsRematch, setOpponentWantsRematch] = useState(false);
   /** True while *this* client is offline, as opposed to the opponent. */
   const [selfOffline, setSelfOffline] = useState(false);
+  const [opponentLeft, setOpponentLeft] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const feed = useMatchFeed();
@@ -69,12 +71,20 @@ export function useOnlineMatch() {
       });
     };
 
-    socket.on('connect', identify);
+    let everConnected = false;
+    socket.on('connect', () => {
+      identify();
+      setFlash(everConnected ? 'online.reconnected' : null);
+      everConnected = true;
+    });
     socket.on('connect_error', () => {
       setSelfOffline(true);
       setStage((current) => (current.kind === 'match' ? current : { kind: 'error', message: 'error.offline' }));
     });
-    socket.on('disconnect', () => setSelfOffline(true));
+    socket.on('disconnect', () => {
+      setSelfOffline(true);
+      setFlash('online.connectionLost');
+    });
 
     socket.on('room', (room) => setStage({ kind: 'room', room }));
 
@@ -84,6 +94,7 @@ export function useOnlineMatch() {
       setRematchPending(false);
       setOpponentWantsRematch(false);
       setAwayUntil(null);
+      setOpponentLeft(false);
       feedRef.current.reset();
       setStage({ kind: 'match' });
     });
@@ -98,7 +109,11 @@ export function useOnlineMatch() {
     });
 
     socket.on('matchOver', (result) => setOver(result));
-    socket.on('opponentLeft', () => setAwayUntil(null));
+    socket.on('opponentLeft', () => {
+      setAwayUntil(null);
+      setOpponentLeft(true);
+      setFlash('online.opponentLeft');
+    });
     socket.on('opponentAway', (until) => setAwayUntil(until));
     socket.on('opponentBack', () => setAwayUntil(null));
     // Sent to the player who did NOT ask — it is an incoming offer, not an ack.
@@ -129,6 +144,12 @@ export function useOnlineMatch() {
     const timer = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(timer);
   }, [needsClock]);
+
+  useEffect(() => {
+    if (!flash) return;
+    const timer = window.setTimeout(() => setFlash(null), 2400);
+    return () => window.clearTimeout(timer);
+  }, [flash]);
 
   const createRoom = useCallback(() => {
     socketRef.current?.emit('createRoom', (result) => {
@@ -187,7 +208,11 @@ export function useOnlineMatch() {
       canPick: myTurn,
       pick: (uid: string) => {
         if (!snapshot) return;
-        socketRef.current?.emit('pick', snapshot.matchId, uid, () => undefined);
+        socketRef.current?.emit('pick', snapshot.matchId, uid, (result) => {
+          // A rejection means this client's view drifted; the server re-syncs
+          // it, but the player deserves to know the tap did nothing.
+          if (!('ok' in result) || !result.ok) setFlash('error.illegalMove');
+        });
       },
       /**
        * Counts down whenever the server has a deadline — including while the
@@ -210,12 +235,14 @@ export function useOnlineMatch() {
       },
       rematchPending,
       opponentWantsRematch,
+      opponentLeft,
+      flash,
       leave,
       ratingDelta: over?.ratingDelta ?? null,
       opponentName: snapshot?.opponent.name ?? null,
       reconnectSeconds: awayUntil !== null ? Math.max(0, Math.ceil((awayUntil - now) / 1000)) : null,
     }),
-    [state, me, status, myTurn, snapshot, feed, rematchPending, opponentWantsRematch, leave, over, awayUntil, now, finished],
+    [state, me, status, myTurn, snapshot, feed, rematchPending, opponentWantsRematch, opponentLeft, flash, leave, over, awayUntil, now, finished],
   );
 
   return { controller, stage, createRoom, joinRoom, startQueue, cancelQueue, leave, over };

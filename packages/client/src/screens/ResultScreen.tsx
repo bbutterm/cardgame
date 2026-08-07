@@ -12,6 +12,7 @@ export interface ResultScreenProps {
   onRematch: () => void;
   rematchPending: boolean;
   opponentWantsRematch?: boolean;
+  opponentLeft?: boolean;
   onHome: () => void;
   /** True for bot games, where the rating deliberately does not move. */
   unranked: boolean;
@@ -24,6 +25,7 @@ export function ResultScreen({
   onRematch,
   rematchPending,
   opponentWantsRematch = false,
+  opponentLeft = false,
   onHome,
   unranked,
 }: ResultScreenProps) {
@@ -80,13 +82,15 @@ export function ResultScreen({
           type="button"
           className="btn btn--primary"
           onClick={onRematch}
-          disabled={rematchPending}
+          disabled={rematchPending || opponentLeft}
         >
-          {rematchPending
-            ? t('result.rematchWaiting')
-            : opponentWantsRematch
-              ? `${t('result.rematch')} · ${t('emote.rematch')}`
-              : t('result.rematch')}
+          {opponentLeft
+            ? t('result.rematchDeclined')
+            : rematchPending
+              ? t('result.rematchWaiting')
+              : opponentWantsRematch
+                ? `${t('result.rematch')} · ${t('emote.rematch')}`
+                : t('result.rematch')}
         </button>
         <button type="button" className="btn" onClick={onHome}>
           {t('result.home')}

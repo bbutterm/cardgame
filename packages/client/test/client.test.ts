@@ -97,3 +97,49 @@ describe('card presentation contract', () => {
     }
   });
 });
+
+/**
+ * Guards against the dictionaries rotting in either direction. The reviewer
+ * found 24 keys with no reference, and several turned out to be missing
+ * *features* rather than dead strings — a written-but-never-rendered
+ * "Leave? This counts as a loss." confirmation, for one.
+ */
+describe('dictionary is fully wired', () => {
+  /** Keys built at runtime from a variable, which a text scan cannot see. */
+  const DYNAMIC = [
+    /^difficulty\./, // `difficulty.${level}` and `.hint`
+    /^faction\./, // `faction.${card.faction}`
+    /^tutorial\.s\d/, // `tutorial.s${step + 1}.title`
+    /^battle\.round/, // chosen from a verdict variable
+    /^result\.(victory|defeat|draw)$/, // chosen from a headline variable
+    /^emote\./, // iterated from EMOTE_KEYS
+    /^online\.(roomFull|roomNotFound)$/, // set as an error message
+    /^error\./, // set as an error message
+  ];
+
+  it('references every key somewhere in the source', async () => {
+    const { readdir, readFile } = await import('node:fs/promises');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+    const walk = async (dir: string): Promise<string[]> => {
+      const entries = await readdir(dir, { withFileTypes: true });
+      const out: string[] = [];
+      for (const entry of entries) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) out.push(...(await walk(full)));
+        else if (/\.tsx?$/.test(entry.name) && !/i18n[\\/](ru|en)\.ts$/.test(full)) out.push(full);
+      }
+      return out;
+    };
+
+    const files = await walk(root);
+    const source = (await Promise.all(files.map((f) => readFile(f, 'utf8')))).join('\n');
+
+    const unused = Object.keys(ru).filter(
+      (key) => !source.includes(`'${key}'`) && !DYNAMIC.some((pattern) => pattern.test(key)),
+    );
+    expect(unused).toEqual([]);
+  });
+});

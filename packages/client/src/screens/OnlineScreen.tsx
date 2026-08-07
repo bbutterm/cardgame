@@ -54,6 +54,7 @@ export function OnlineScreen({ joinCode, onHome }: OnlineScreenProps) {
           onRematch={controller.rematch}
           rematchPending={controller.rematchPending}
           opponentWantsRematch={controller.opponentWantsRematch}
+          opponentLeft={controller.opponentLeft}
           onHome={goHome}
         />
       );

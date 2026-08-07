@@ -140,6 +140,9 @@
   font-weight: 900;
   line-height: 1.2;
   letter-spacing: -0.01em;
+  /* Russian card names are long single words. Without this "Полководец" is
+     clipped mid-word to "Полковод" rather than wrapping to the second line. */
+  overflow-wrap: anywhere;
   /* Two lines max: "Костровой гигант" must not push the rules text out. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -152,6 +155,7 @@
   font-weight: 700;
   line-height: 1.18;
   opacity: 0.85;
+  overflow-wrap: anywhere;
   /* Clamp rather than let the card's own overflow cut a word in half. */
   display: -webkit-box;
   -webkit-line-clamp: 3;

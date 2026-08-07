@@ -43,6 +43,13 @@ export interface MatchController {
   rematchPending: boolean;
   /** The opponent has asked and is waiting on this player. */
   opponentWantsRematch: boolean;
+  /** The opponent left for good; no rematch is possible. */
+  opponentLeft: boolean;
+  /**
+   * A transient message to flash over the board, as an i18n key: a rejected
+   * action, a dropped connection, a reconnect, an opponent walking out.
+   */
+  flash: string | null;
   leave: () => void;
   /** Rating delta once the server has scored the match. Null for bot games. */
   ratingDelta: number | null;
