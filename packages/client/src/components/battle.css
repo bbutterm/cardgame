@@ -143,6 +143,17 @@
 .battle__verdict--loss { background: var(--bad); color: var(--paper); }
 .battle__verdict--tie { background: var(--paper-2); }
 
+.battle__math {
+  padding: 0.25rem;
+  border: 2px dashed var(--ink);
+  border-radius: var(--radius);
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
 .battle__hp {
   display: flex;
   flex-direction: column;

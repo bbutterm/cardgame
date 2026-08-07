@@ -9,7 +9,9 @@
 .openrow__line {
   display: grid;
   gap: 0.45rem;
-  width: 100%;
+  /* The cards carry a 3px offset shadow to the right; without this reserve the
+     rightmost one is clipped by the viewport at 320px. */
+  width: calc(100% - 3px);
   /* Both lines use the same three-column track so the two cards on the second
      line sit exactly under the first and second of the line above, instead of
      stretching to half the width each. */
@@ -26,4 +28,9 @@
   min-width: 0;
   /* Room for the -6px lift of a selected card, so it is not clipped. */
   padding-top: 6px;
+  transition: transform 120ms ease;
+}
+
+.openrow__cell.is-pressing {
+  transform: scale(0.96);
 }

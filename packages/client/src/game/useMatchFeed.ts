@@ -22,8 +22,14 @@ const EMOTE_MS = 2600;
 /** Emote feed cap. A flood must not grow the DOM without bound. */
 const MAX_EMOTES = 4;
 
-/** Events worth surfacing to the player as a transient chip. */
+/**
+ * Events worth surfacing to the player as a transient chip.
+ *
+ * `pick` counts only when the engine made it: running out of time costs you a
+ * turn, and the board said nothing at all about it.
+ */
 function isNotice(event: GameEvent): boolean {
+  if (event.t === 'pick') return event.auto;
   return event.t === 'skip' || event.t === 'extraPick' || event.t === 'peek';
 }
 

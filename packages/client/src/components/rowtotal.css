@@ -1,0 +1,42 @@
+.rowtotal {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+}
+
+.rowtotal--end {
+  flex-direction: row-reverse;
+}
+
+.rowtotal__label {
+  opacity: 0.5;
+  font-weight: 900;
+}
+
+.rowtotal__value {
+  min-width: 1.4rem;
+  padding: 0.05rem 0.35rem;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: var(--paper-2);
+  font-size: 1rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  transition: background-color 160ms ease;
+}
+
+.rowtotal__value--up {
+  background: var(--good);
+}
+
+.rowtotal__value--down {
+  background: var(--bad);
+  color: var(--paper);
+}
+
+.rowtotal__arrow {
+  font-size: 0.8rem;
+  opacity: 0.45;
+}

@@ -124,6 +124,19 @@ export function BattleOverlay({ result, me, meName, themName, maxHp, onDone }: B
             {t(verdict as 'battle.roundWin')}
           </div>
 
+          {/* The arithmetic itself. The two totals were on screen but the game
+              never said that their difference IS the damage — the one rule the
+              whole match turns on. */}
+          {result.winner !== null && (
+            <div className="battle__math">
+              {t('battle.math', {
+                winner: result.power[result.winner],
+                loser: result.power[other(result.winner)],
+                damage: Math.abs(result.power[0] - result.power[1]),
+              })}
+            </div>
+          )}
+
           <div className="battle__hp">
             <HpBar
               label={themName}

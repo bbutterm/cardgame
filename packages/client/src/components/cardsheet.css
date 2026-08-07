@@ -1,0 +1,57 @@
+.cardsheet {
+  position: fixed;
+  inset: 0;
+  z-index: 46;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(18, 16, 14, 0.7);
+  animation: battle-in 140ms ease;
+}
+
+.cardsheet__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 17rem;
+  padding: 0.75rem;
+}
+
+.cardsheet__card {
+  align-self: center;
+  width: 8.5rem;
+}
+
+.cardsheet__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cardsheet__name {
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.cardsheet__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.chip--beast { background: var(--beast); }
+.chip--fire { background: var(--fire); }
+.chip--shadow { background: var(--shadow); }
+.chip--machine { background: var(--machine); }
+.chip--neutral { background: var(--neutral); }
+
+.cardsheet__text {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+  opacity: 0.85;
+}

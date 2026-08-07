@@ -10,6 +10,8 @@
   min-height: 100dvh;
   padding: calc(var(--safe-top) + 0.4rem) 0.6rem calc(var(--safe-bottom) + 0.4rem);
   gap: 0.35rem;
+  /* Nothing here may push the page sideways; the board sizes to fit instead. */
+  overflow-x: hidden;
 }
 
 /* ------------------------------------------------------------------- chrome */
@@ -20,15 +22,20 @@
   gap: 0.5rem;
 }
 
+/*
+ * 44px, not the 30px this started at. It sits top-left where a right thumb
+ * brushes past on the way to the top card, and in an online match it forfeits
+ * the game — so it is both a real tap target and confirmed before it fires.
+ */
 .match__exit {
   flex: 0 0 auto;
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
   border: 2px solid var(--ink);
   border-radius: 8px;
   background: var(--paper);
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 900;
   line-height: 1;
 }
@@ -37,11 +44,16 @@
   font-weight: 900;
 }
 
-.match__seat {
+/*
+ * Replaces the old "you pick first / opponent picks first" label, which wrapped
+ * to two lines at every width and was the least legible text on the screen. The
+ * row totals below say the same thing better.
+ */
+.match__left {
   margin-left: auto;
   opacity: 0.55;
   text-align: right;
-  max-width: 9rem;
+  white-space: nowrap;
 }
 
 .match__timer {
@@ -64,12 +76,30 @@
   background: var(--bad);
 }
 
+/* The opponent's clock still runs; showing it dimmed is the difference between
+   "they are thinking" and "they are gone". */
+.match__timer.is-theirs {
+  opacity: 0.4;
+}
+
 /* -------------------------------------------------------------------- sides */
 
 .match__side {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+.match__strip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.match__strip .match__taken {
+  flex: 1;
+  min-width: 0;
 }
 
 .match__taken {
@@ -166,6 +196,9 @@
 }
 
 .match__confirm-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
   min-width: 0;
   flex: 1;
 }
@@ -192,7 +225,15 @@
 
 /* --------------------------------------------------------------------- peek */
 
-.match__peek-sheet {
+.match__question {
+  padding: 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.match__sheet {
   position: fixed;
   inset: 0;
   z-index: 45;
@@ -203,7 +244,7 @@
   background: rgba(18, 16, 14, 0.7);
 }
 
-.match__peek-inner {
+.match__sheet-inner {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
