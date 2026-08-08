@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { BotLevel } from '@delezh/bot';
 import { ALL_CARDS, encounterPool, type Encounter } from '@delezh/cards';
 import { useBotMatch } from '../game/useBotMatch.js';
-import { markCleared } from '../campaign.js';
+import { isExtendedEnabled, markCleared } from '../campaign.js';
 import { MatchScreen } from './MatchScreen.js';
 import { ResultScreen } from './ResultScreen.js';
 
@@ -28,12 +28,17 @@ export function BotMatchScreen({ level, encounter, onHome, onCleared }: BotMatch
   const [round, setRound] = useState(0);
   const [recorded, setRecorded] = useState(false);
 
+  // Read once, at mount: flipping the setting should decide the *next* match,
+  // never swap the deck out from under the one being played.
+  const [extended] = useState(isExtendedEnabled);
+
   // Memoised on the encounter id: a new array identity every render would
-  // restart the match on every state change.
-  const cards = useMemo(
-    () => (encounter ? encounterPool(encounter, ALL_CARDS) : undefined),
-    [encounter],
-  );
+  // restart the match on every state change. `undefined` means "engine default",
+  // which is the base 30 — a free match only widens when the reward is on.
+  const cards = useMemo(() => {
+    if (encounter) return encounterPool(encounter, ALL_CARDS);
+    return extended ? ALL_CARDS : undefined;
+  }, [encounter, extended]);
   const config = useMemo(
     () => (encounter?.rounds !== undefined ? { rounds: encounter.rounds } : undefined),
     [encounter],

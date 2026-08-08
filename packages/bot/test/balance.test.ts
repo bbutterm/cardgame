@@ -68,14 +68,46 @@ describe('experimental pool', () => {
   });
 
   /**
-   * Individually-fair cards can still make the *match* unfair as a set. Adding
-   * the experiments moves the first picker from ~49.8% to ~52.5% at volume,
-   * because most of them reward the three-card seat. That is why they are
-   * opt-in rather than dealt by default, and this is what would notice a future
-   * experiment making the drift worse.
+   * Individually-fair cards can still make the *match* unfair as a set. At 4000
+   * matches the base 30 put the first picker on 49.5% and all 36 on 53.5–54.3%,
+   * depending on the seed set — at the edge of the corridor the base set is held
+   * to, which is exactly why the experiments are opt-in, offline and unranked
+   * rather than dealt by default.
+   *
+   * The bound here is loose on purpose. 800 matches resolve a win rate to about
+   * ±2 points, so a 54% assertion at this sample size would fail on seed choice
+   * alone; the tight number is measured with `pnpm balance --grid pool`. What
+   * this catches is a future experiment that makes the drift *run away*, which
+   * is the failure worth having in CI.
    */
-  it('does not push the first picker past 55%', () => {
-    expect(withExperiments.firstPickerWinRate).toBeLessThan(0.55);
+  it('does not let the first picker run away', () => {
+    expect(withExperiments.firstPickerWinRate).toBeLessThan(0.58);
+  });
+
+  /**
+   * Ships exactly the experiments EXPERIMENTS.md says were accepted.
+   *
+   * Salvager was rejected there as a duplicate decision and stayed in the array
+   * anyway — invisible while the set was dev-only, and shipped to players the
+   * moment finishing the campaign started unlocking it. The doc is the record of
+   * the verdict, so it is what the code is checked against.
+   */
+  it('matches the verdict recorded in EXPERIMENTS.md', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+
+    const here = dirname(fileURLToPath(import.meta.url));
+    const doc = await readFile(join(here, '..', '..', '..', 'EXPERIMENTS.md'), 'utf8');
+    const accepted = doc.match(/^## Accepted — (\d+) of (\d+) tried$/m);
+    const rejected = doc.match(/^## Rejected — (\d+)$/m);
+
+    expect(accepted, 'EXPERIMENTS.md has no "## Accepted — N of M tried" header').not.toBeNull();
+    expect(rejected, 'EXPERIMENTS.md has no "## Rejected — N" header').not.toBeNull();
+
+    const kept = Number(accepted![1]);
+    expect(EXPERIMENTAL_CARDS.length).toBe(kept);
+    expect(kept + Number(rejected![1])).toBe(Number(accepted![2]));
   });
 });
 

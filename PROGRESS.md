@@ -532,5 +532,69 @@ which is worth being honest about.
   drops an average player from 40% to 27% while leaving a good one untouched.
   The sharpest instance yet of the measurement problem in D-14, and the reason
   it is not in the finale.
-- **No reward for finishing.** The obvious one is unlocking the experimental
-  cards in free play: they exist, they are balanced, and they are already opt-in.
+---
+
+## Iteration 6 — the campaign's reward, and what it exposed
+
+Finishing all eight encounters now unlocks the **extended card set** — the
+accepted experiments — as an off-by-default toggle in Settings, applying to free
+bot matches only. Online and the campaign keep dealing the base 30. Verified in
+a browser at 360px: 12 deals with the toggle off drew 25 distinct cards, all
+base; 12 with it on drew 28 including Aegis Mote, Ember Cascade and Mirror Idol.
+
+The unlock is re-derived from progress on every read rather than latched at
+completion. That is what makes "start over" put the extra cards away with it,
+and it means a hand-edited `delezh.extendedSet` flag grants nothing on its own.
+
+### D-19 — a rejected card was holding the experimental set together
+
+Building the reward meant looking at the experimental set as *shipping content*
+for the first time, and it did not survive the look. `EXPERIMENTS.md` records
+nine designs: six accepted, three rejected. `EXPERIMENTAL_CARDS` held seven.
+Salvager — rejected there in writing as "a second copy of an existing decision
+rather than a new one" — had never been taken back out of the array.
+
+That was harmless while the set was dev-only. It stopped being harmless the
+moment finishing the campaign started handing the set to players, so Salvager is
+now actually gone, and a test reads the two counts out of `EXPERIMENTS.md` and
+asserts the shipping array matches. The record of a verdict is worth nothing if
+the code can quietly disagree with it.
+
+Removing it cost 1.4 points. At 4000 matches (`pnpm balance --grid pool`):
+
+| pool | first-picker | knockouts |
+|---|---|---|
+| base (30) | 49.5% | 8.7% |
+| all, with Salvager (37) | 52.9% | 12.8% |
+| all, without Salvager (36) | 54.3% | 10.5% |
+
+A card rejected for being a redundant *decision* was doing real work as a
+*body* — one more thing competing for the 25 pool slots, diluting the cards that
+drift. D-16 again, from the other side: the set is not the sum of its cards, and
+that cuts both ways.
+
+It was kept out anyway. All 36 cards are individually inside 42–58% (measured,
+4000 matches); the strict 46–54% seat bound still holds on the base 30, which is
+the only set that decides a rating; and the extended set is opt-in, offline and
+unranked, where a seat advantage the player never chooses is invisible. Keeping
+a card the design record calls redundant, purely as ballast, would have bought
+one point at the cost of the record meaning anything.
+
+The regression test's bound moved to 58% with its reasoning written down: 800
+matches resolve a win rate to about ±2 points, so a 54% assertion at that sample
+size fails on seed choice alone. The tight number is measured, not asserted.
+
+### Also fixed
+
+- **The default nickname was Russian for everyone.** It is generated once, at
+  first launch, written to storage, and shown on the leaderboard — so an English
+  player was permanently «Быстрый Дрон». Now drawn from a per-locale word list
+  (`detectLocale` moved out of the React provider so a plain storage helper can
+  use it). It stays fixed once written: a later language switch does not rename
+  someone behind their back.
+- `pnpm balance` listed every grid except `pool` in its unknown-grid error — the
+  one that swaps decks, and the one this iteration needed.
+
+### Known open items
+
+- **No reward for finishing.** *(Done — see above.)*

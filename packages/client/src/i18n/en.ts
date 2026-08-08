@@ -29,6 +29,7 @@ export const en: Record<MessageKey, string> = {
   'campaign.cleared': 'Cleared',
   'campaign.reset': 'Start over',
   'campaign.resetConfirm': 'Reset all campaign progress?',
+  'campaign.reward': 'Extra cards unlocked — switch them on in Settings',
 
   'difficulty.title': 'Bot difficulty',
   'difficulty.easy': 'Rookie',
@@ -139,6 +140,8 @@ export const en: Record<MessageKey, string> = {
   'settings.on': 'On',
   'settings.off': 'Off',
   'settings.nickname': 'Name',
+  'settings.extended': 'Extended card set',
+  'settings.extended.hint': '6 extra cards. Free bot matches only.',
 
   'faction.beast': 'Beast',
   'faction.fire': 'Fire',

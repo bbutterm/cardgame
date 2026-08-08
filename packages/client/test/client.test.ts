@@ -1,12 +1,34 @@
-import { describe, expect, it } from 'vitest';
-import { ALL_CARDS, CAMPAIGN, encounterPool, getCard, LOCALES } from '@delezh/cards';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ALL_CARDS, CAMPAIGN, CARDS, encounterPool, getCard, LOCALES } from '@delezh/cards';
 import { createMatch, createRng, resolveLines, type CardInstance } from '@delezh/engine';
 import { playMatch } from '@delezh/bot/simulate';
 import { EMOTE_KEYS } from '@delezh/protocol';
 import { ru } from '../src/i18n/ru.js';
 import { en } from '../src/i18n/en.js';
 import { projectedTotal, rowTotalOf } from '../src/components/RowTotal.js';
-import { isComplete, isUnlocked } from '../src/campaign.js';
+import { loadProfile } from '../src/profile.js';
+import {
+  isComplete,
+  isExtendedEnabled,
+  isExtendedUnlocked,
+  isUnlocked,
+  markCleared,
+  resetProgress,
+  setExtendedEnabled,
+} from '../src/campaign.js';
+
+/**
+ * The campaign module persists to `localStorage`; the client suite runs on node
+ * with no DOM, so this is the whole of the browser it needs. Cheaper and more
+ * predictable than pulling in jsdom for one storage key.
+ */
+const store = new Map<string, string>();
+(globalThis as { localStorage?: unknown }).localStorage = {
+  getItem: (k: string) => store.get(k) ?? null,
+  setItem: (k: string, v: string) => void store.set(k, v),
+  removeItem: (k: string) => void store.delete(k),
+  clear: () => store.clear(),
+};
 
 /** Card instances for a hypothetical row, without spinning up a match. */
 function hand(...cardIds: string[]): CardInstance[] {
@@ -236,5 +258,91 @@ describe('campaign progression', () => {
   it('reports completion only when every encounter is cleared', () => {
     expect(isComplete({ cleared: CAMPAIGN.map((e) => e.id) })).toBe(true);
     expect(isComplete({ cleared: CAMPAIGN.slice(0, -1).map((e) => e.id) })).toBe(false);
+  });
+});
+
+describe('default nickname', () => {
+  /** The generator is random; ten draws is enough to catch a hardcoded list. */
+  function namesFor(locale: string): string[] {
+    const out: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      localStorage.removeItem('delezh.profile');
+      localStorage.setItem('delezh.locale', locale);
+      out.push(loadProfile().name);
+    }
+    return out;
+  }
+
+  it('is generated in the player\'s language', () => {
+    // It was Russian for everyone, and it is written to storage on first launch
+    // and shown on the leaderboard, so an English player was stuck with it.
+    for (const name of namesFor('en')) expect(name, name).toMatch(/^[A-Za-z]+ [A-Za-z]+$/);
+    for (const name of namesFor('ru')) expect(name, name).toMatch(/^[А-ЯЁ][а-яё]+ [А-ЯЁ][а-яё]+$/);
+  });
+
+  it('is stable once written, even across a language switch', () => {
+    localStorage.removeItem('delezh.profile');
+    localStorage.setItem('delezh.locale', 'en');
+    const first = loadProfile().name;
+    localStorage.setItem('delezh.locale', 'ru');
+    expect(loadProfile().name).toBe(first);
+  });
+});
+
+describe('extended card set (campaign reward)', () => {
+  beforeEach(() => {
+    resetProgress();
+    setExtendedEnabled(false);
+  });
+
+  it('stays locked until the last encounter is cleared', () => {
+    for (const encounter of CAMPAIGN.slice(0, -1)) markCleared(encounter.id);
+    expect(isExtendedUnlocked()).toBe(false);
+
+    // Turning it on early must not take, or a stale flag would grant the reward
+    // the moment the campaign later completes without the player choosing it.
+    setExtendedEnabled(true);
+    expect(isExtendedEnabled()).toBe(false);
+
+    markCleared(CAMPAIGN.at(-1)!.id);
+    expect(isExtendedUnlocked()).toBe(true);
+  });
+
+  it('is off by default once unlocked, and toggles', () => {
+    for (const encounter of CAMPAIGN) markCleared(encounter.id);
+    expect(isExtendedEnabled()).toBe(false);
+
+    setExtendedEnabled(true);
+    expect(isExtendedEnabled()).toBe(true);
+
+    setExtendedEnabled(false);
+    expect(isExtendedEnabled()).toBe(false);
+  });
+
+  it('goes away again when progress is reset', () => {
+    for (const encounter of CAMPAIGN) markCleared(encounter.id);
+    setExtendedEnabled(true);
+    expect(isExtendedEnabled()).toBe(true);
+
+    resetProgress();
+    expect(isExtendedUnlocked()).toBe(false);
+    expect(isExtendedEnabled()).toBe(false);
+
+    // ...and the earlier choice is remembered rather than silently dropped.
+    for (const encounter of CAMPAIGN) markCleared(encounter.id);
+    expect(isExtendedEnabled()).toBe(true);
+  });
+
+  it('widens the pool it is meant to widen and nothing else', () => {
+    // The reward is the experimental cards; the base set must not contain them,
+    // and every campaign pool must stay inside the base 30 (D-16: the
+    // experimental set as a whole moves the first-picker rate).
+    expect(CARDS.some((c) => c.experimental)).toBe(false);
+    expect(ALL_CARDS.length).toBeGreaterThan(CARDS.length);
+
+    const base = new Set(CARDS.map((c) => c.id));
+    for (const encounter of CAMPAIGN) {
+      for (const id of encounter.pool) expect(base.has(id), `${encounter.id}/${id}`).toBe(true);
+    }
   });
 });

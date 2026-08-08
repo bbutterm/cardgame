@@ -126,7 +126,9 @@ if (GRID === 'pool') {
   process.exit(0);
 }
 if (!grid) {
-  console.error(`unknown grid "${GRID}". available: ${Object.keys(grids).join(', ')}`);
+  // `pool` is handled above and is not in `grids`, so it has to be named here
+  // or the error message advertises everything except the one that swaps decks.
+  console.error(`unknown grid "${GRID}". available: ${Object.keys(grids).join(', ')}, pool`);
   process.exit(1);
 }
 

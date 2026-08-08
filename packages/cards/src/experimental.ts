@@ -98,19 +98,4 @@ export const EXPERIMENTAL_CARDS: readonly CardDef[] = [
     effects: [{ kind: 'weaken', amount: 3 }],
     experimental: true,
   },
-  {
-    id: 'salvager',
-    name: { ru: 'Мусорщик', en: 'Salvager' },
-    text: { ru: 'Сила равна сильнейшей твоей карте', en: 'Power equals your strongest other card' },
-    power: 0,
-    faction: 'machine',
-    rarity: 'common',
-    tags: ['construct'],
-    weight: 6,
-    maxCopies: 2,
-    // A second Mirror Idol in a faction that has synergy support, to see whether
-    // the effect's balance came from the card or from being colourless.
-    effects: [{ kind: 'mirrorStrongest' }],
-    experimental: true,
-  },
 ];

@@ -49,3 +49,14 @@
 .settings__pill.is-on {
   background: var(--accent);
 }
+
+/* Sits directly under the toggle it explains, so it is deliberately quiet.
+   Tagged `p.` on purpose: `.tiny` sets uppercase and ties on specificity, and
+   theme.css lands after this file in the bundle. A whole sentence in uppercase
+   reads as a warning, and small uppercase Cyrillic loses its diacritics. */
+p.settings__hint {
+  margin: -0.1rem 0.2rem 0;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.35;
+}

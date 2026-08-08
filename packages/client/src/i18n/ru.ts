@@ -32,6 +32,7 @@ export const ru = {
   'campaign.cleared': 'Пройдено',
   'campaign.reset': 'Начать заново',
   'campaign.resetConfirm': 'Сбросить весь прогресс кампании?',
+  'campaign.reward': 'Открыт расширенный набор карт — включите его в настройках',
 
   'difficulty.title': 'Сложность бота',
   'difficulty.easy': 'Новичок',
@@ -142,6 +143,8 @@ export const ru = {
   'settings.on': 'Вкл',
   'settings.off': 'Выкл',
   'settings.nickname': 'Имя',
+  'settings.extended': 'Расширенный набор',
+  'settings.extended.hint': '6 дополнительных карт. Только в играх с ботом.',
 
   'faction.beast': 'Зверь',
   'faction.fire': 'Огонь',

@@ -95,6 +95,13 @@ Progress lives in `localStorage`, not on the server: the campaign is
 single-player, moves no rating, and has to work on a plane. Encounters unlock
 strictly in order.
 
+Finishing all eight unlocks the **extended card set** — the six experimental
+cards from `EXPERIMENTS.md` — as an off-by-default toggle in Settings. It
+applies to free bot matches only; online and the campaign always deal from the
+base 30, because as a *set* the experimental cards move the first-picker rate
+(D-16). The unlock is re-checked on every read rather than latched, so "start
+over" puts the extra cards away with it.
+
 Tests enforce the same discipline the cards get — every pool has at least six
 distinct cards, blurbs stay under eight words in both locales, a `twist` string
 exists exactly when the encounter changes the rules, difficulty never goes

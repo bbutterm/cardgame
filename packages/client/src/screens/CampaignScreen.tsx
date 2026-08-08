@@ -42,7 +42,12 @@ export function CampaignScreen({ onPlay, onBack }: CampaignScreenProps) {
         <span className="tiny">{t('campaign.progress', { done, total: CAMPAIGN.length })}</span>
       </div>
 
-      {finished && <div className="campaign__done">{t('campaign.complete')}</div>}
+      {finished && (
+        <div className="campaign__done">
+          <span>{t('campaign.complete')}</span>
+          <span className="tiny campaign__reward">{t('campaign.reward')}</span>
+        </div>
+      )}
 
       <ol className="campaign__list">
         {CAMPAIGN.map((encounter, index) => {

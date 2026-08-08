@@ -33,6 +33,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   card in full.
 - Synthesised WebAudio sound, haptics, ru/en with zero hardcoded UI strings.
 
+**Campaign**
+- Eight single-player opponents, roughly twenty minutes, offline, no account.
+  Each fight makes one idea the only thing on the table by narrowing the pool to
+  it. Entirely data (`packages/cards/src/campaign.ts`): an encounter is a card
+  pool, a bot level, and optional config overrides, all of which `createMatch`
+  already took. The one engine addition was `hp: [player, opponent]`, since the
+  existing `startHp` / `secondPickerHpBonus` pair can express seat compensation
+  but not a handicap.
+- Progress in `localStorage`, unlocking strictly in order, with the gate reading
+  the previous encounter's id rather than a count.
+- Clearing all eight unlocks the extended card set (the six experimental cards)
+  as an off-by-default toggle, in free bot matches only — online and the
+  campaign always deal from the base 30.
+
 **Server**
 - Authoritative Socket.io. Clients send intent, never state; every action is
   re-validated and every snapshot filtered through `viewFor()`.
@@ -42,9 +56,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 **Tooling**
 - `pnpm sim` — per-card balance report; `pnpm balance` — config and pool sweeps.
-- 155+ tests: one per effect kind, engine edge cases, bot-vs-bot at every level
+- `packages/bot/scripts/campaign.ts` — per-encounter report: win rate against
+  both a strong and an average player model, rows, knockout rate, distinct cards
+  dealt, and printed-vs-played power per card (which is how a synergy card with
+  no partner in its pool gets caught).
+- 170+ tests: one per effect kind, engine edge cases, bot-vs-bot at every level
   pairing, a balance regression on the 42–58% corridor, end-to-end online play
-  over real sockets, and dictionary integrity.
+  over real sockets, every campaign encounter played to a finish, and dictionary
+  integrity.
 
 ### Balance
 - Starting HP 20 → 11, with +2 for the player who picks second in row 1. At 20,
@@ -55,6 +74,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - Result: 0 of 30 cards outside 42–58% across 30,000 matches on six seeds;
   first-picker win rate 49.8–51.5%.
 - Experimental pass: 9 designs tried, 6 kept, in `ALL_CARDS` as opt-in content.
+  Measured at 4000 matches: base 30 puts the first picker on 49.5%, all 37 on
+  52.9% — in band, which is what makes the extended set safe to hand out.
 
 ### Security
 - `viewFor` blanked future rows but shipped the seed they are generated from,

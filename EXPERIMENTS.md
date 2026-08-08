@@ -116,6 +116,13 @@ answer to the question was "the effect is fine either way", which is worth
 knowing and not worth a card slot. Rejected for adding a second copy of an
 existing decision rather than a new one.
 
+It then shipped anyway: the verdict was written here and the card was never
+taken back out of `EXPERIMENTAL_CARDS`. That was invisible for as long as the
+experimental set was dev-only, and it stopped being invisible the moment
+finishing the campaign started handing the set to players. A test now reads the
+two counts in this file's headers and asserts the shipping array matches, so the
+next rejection cannot leak the same way.
+
 ---
 
 ## What the experiments changed about the *measurement*

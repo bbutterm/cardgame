@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LOCALES, useI18n } from '../i18n/index.js';
 import { isHapticsEnabled, isSoundEnabled, playSound, setHapticsEnabled, setSoundEnabled } from '../audio.js';
 import { loadProfile, updateProfile } from '../profile.js';
+import { isExtendedEnabled, isExtendedUnlocked, setExtendedEnabled } from '../campaign.js';
 import './settings.css';
 
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
@@ -9,6 +10,10 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const [profile, setProfile] = useState(loadProfile);
   const [sound, setSound] = useState(isSoundEnabled);
   const [haptics, setHaptics] = useState(isHapticsEnabled);
+  // Hidden entirely until the campaign is finished — a greyed-out row asking to
+  // be earned is a nag, and the campaign screen already announces the reward.
+  const [extendedUnlocked] = useState(isExtendedUnlocked);
+  const [extended, setExtended] = useState(isExtendedEnabled);
 
   return (
     <div className="screen settings">
@@ -69,6 +74,24 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
           setHaptics(next);
         }}
       />
+
+      {extendedUnlocked && (
+        <>
+          <Toggle
+            label={t('settings.extended')}
+            on={extended}
+            onLabel={t('settings.on')}
+            offLabel={t('settings.off')}
+            onToggle={() => {
+              const next = !extended;
+              setExtendedEnabled(next);
+              setExtended(next);
+              playSound('tap');
+            }}
+          />
+          <p className="settings__hint tiny muted">{t('settings.extended.hint')}</p>
+        </>
+      )}
     </div>
   );
 }

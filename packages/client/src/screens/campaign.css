@@ -30,6 +30,9 @@
 }
 
 .campaign__done {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   padding: 0.5rem;
   border: var(--border) solid var(--ink);
   border-radius: var(--radius);
@@ -39,6 +42,14 @@
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+
+/* Stays uppercase, unlike the settings hint: every other small line on this
+   screen is uppercase, and a single sentence-case line inside the banner would
+   read as a different component. */
+.campaign__reward {
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .campaign__list {

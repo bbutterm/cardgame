@@ -2,22 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { LOCALES, type Locale } from '@delezh/cards';
 import { ru, type MessageKey } from './ru.js';
 import { en } from './en.js';
+import { detectLocale, LOCALE_STORAGE_KEY } from './locale.js';
 
 const DICTIONARIES: Record<Locale, Record<MessageKey, string>> = { ru, en };
-
-const STORAGE_KEY = 'delezh.locale';
-
-function detectLocale(): Locale {
-  if (typeof window === 'undefined') return 'ru';
-  const saved = window.localStorage.getItem(STORAGE_KEY);
-  if (saved && (LOCALES as readonly string[]).includes(saved)) return saved as Locale;
-  const preferred = window.navigator.languages ?? [window.navigator.language];
-  for (const tag of preferred) {
-    const base = tag.slice(0, 2).toLowerCase();
-    if ((LOCALES as readonly string[]).includes(base)) return base as Locale;
-  }
-  return 'en';
-}
 
 export type Vars = Record<string, string | number>;
 
@@ -40,7 +27,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(detectLocale);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, locale);
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
     document.documentElement.lang = locale;
   }, [locale]);
 

@@ -9,6 +9,7 @@ import { CAMPAIGN } from '@delezh/cards';
  */
 
 const KEY = 'delezh.campaign';
+const EXTENDED_KEY = 'delezh.extendedSet';
 
 export interface CampaignProgress {
   /** Encounter ids that have been beaten. */
@@ -71,4 +72,39 @@ export function nextEncounterIndex(progress: CampaignProgress): number {
 
 export function isComplete(progress: CampaignProgress): boolean {
   return CAMPAIGN.every((e) => progress.cleared.includes(e.id));
+}
+
+/**
+ * Finishing the campaign unlocks the experimental cards in free bot matches.
+ *
+ * They already exist and are already balanced individually (EXPERIMENTS.md);
+ * what kept them out of the default set is D-16 — as a *set* they push the
+ * first picker from 49.8% to 52.5%. So the reward is deliberately scoped to the
+ * one mode where that does not matter: offline, unranked, against a bot. Online
+ * and the campaign itself always deal from the base 30, whatever this says.
+ *
+ * The unlock is checked on read rather than latched at completion, so pressing
+ * "start over" puts the extra cards away too — a player who resets to replay the
+ * ramp should get the ramp they had, not a wider pool with the same opponents.
+ */
+export function isExtendedUnlocked(): boolean {
+  return isComplete(loadProgress());
+}
+
+export function isExtendedEnabled(): boolean {
+  if (!isExtendedUnlocked()) return false;
+  try {
+    return localStorage.getItem(EXTENDED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setExtendedEnabled(on: boolean): void {
+  try {
+    if (on) localStorage.setItem(EXTENDED_KEY, '1');
+    else localStorage.removeItem(EXTENDED_KEY);
+  } catch {
+    /* private mode; the toggle still reads back false, which is honest */
+  }
 }
