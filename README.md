@@ -134,16 +134,21 @@ leaderboard.
 Eight opponents, roughly twenty minutes, offline, no account. Each fight makes
 one idea the only thing on the table:
 
-| # | opponent | what it teaches |
-|---|---|---|
-| 1 | Волчонок / The Cub | raw numbers — the pool is pure vanilla, no rules text at all |
-| 2 | Вожак стаи / Pack Leader | faction synergy |
-| 3 | Мастер-сборщик / The Assembler | counting, not adding |
-| 4 | Пиромант / The Pyromancer | per-card scaling |
-| 5 | Тихий вор / The Quiet Thief | denial and weaken |
-| 6 | Гонец / The Courier | urgency — three rows, seven HP |
-| 7 | Тяжеловес / The Heavyweight | tempo costs |
-| 8 | Архивариус / The Archivist | everything, on a handicap |
+| # | opponent | what it teaches | a good player wins |
+|---|---|---|---|
+| 1 | Волчонок / The Cub | fitting to 11 — pure vanilla, no rules text at all | 83% |
+| 2 | Вожак стаи / Pack Leader | faction synergy | 78% |
+| 3 | Мастер-сборщик / The Assembler | counting, not adding | 75% |
+| 4 | Пиромант / The Pyromancer | a card that scales is a card that overshoots | 75% |
+| 5 | Тихий вор / The Quiet Thief | denial and weaken | 69% |
+| 6 | Гонец / The Courier | urgency — three rows, seven HP | 61% |
+| 7 | Тяжеловес / The Heavyweight | a big card is nearly a bust by itself | 52% |
+| 8 | Архивариус / The Archivist | everything, on level terms | 49% |
+
+Measured at 1500 mirrored matches per encounter, the human seat driven by the
+`hard` bot. Monotonic, which it has to be re-verified as after any card change —
+`npx tsx packages/bot/scripts/campaign.ts` prints the curve and says where it
+inverts.
 
 The whole thing is **data**, in `packages/cards/src/campaign.ts`. An encounter is
 a card pool, a bot level, and optional config overrides — all of which

@@ -835,6 +835,96 @@ A rule the simulator understands and the screen does not is a gotcha:
   scored best and the next *forced* pick busted it. It now projects the cards it
   will still be made to take.
 
+---
+
+## Iteration 10 — the campaign, rebuilt for the new rule
+
+The rule change broke it. Measured before any repair, the curve for a good
+player was 82 / 83 / 83 / 86 / 75 / 69 / **99** / 49 — three inversions, and one
+encounter that was not an encounter.
+
+### What broke, and why it is instructive
+
+**The Heavyweight was 99.0% with 86% knockouts.** Its pool was three 7-and-8
+power tempo bombs plus five 4s. Under `closest` that detonates: almost every row
+busts somebody, and a bust is the full capped 5 damage, so two of them decide an
+11 HP match. The lesson it was built to teach — big numbers cost you a turn —
+was drowned by the rule teaching a louder one.
+
+**The Cub could not demonstrate the rule at all.** Its vanilla pool topped out
+at 4+3+3 = 10, so a row *could not be overshot*. The first encounter of a game
+about not going over 11 never went over 11. It also held exactly one 4, so "take
+the 4" was correct every time and Stone Boar opened 95% of its rows. This is the
+same defect the tutorial had (D-21) and I did not think to check for it here
+until the numbers were in front of me.
+
+### D-23 — the levers swapped places
+
+Under `sum`, D-17 found the pool was the smooth lever and HP was the blunt one.
+Under `closest` that is **reversed**, and the reversal is not a small effect:
+
+| encounter | change | result |
+|---|---|---|
+| Assembler | +2 small cards | 83% → 86% |
+| Assembler | +2 more | → 90% |
+| Pyromancer | +2 small cards | 75% → 88%, knockouts 42% → 63% |
+
+Diluting a pool with small cards makes it *easier* to land on 11 exactly, and
+landing exactly is precisely the skill the rule rewards — so dilution hands the
+better player a bigger edge, not a smaller one. It moves the wrong way, and it
+moves fast.
+
+HP, meanwhile, became smooth and predictable: **about 8 points of win rate per
+point of opponent HP**, at every pool tested. The Heavyweight reads 77 / 53 / 29
+/ 11% at 11 / 14 / 17 / 20 opponent HP. So the campaign now sets its coarse band
+with the bot level and its fine position with HP, and six of eight encounters
+carry a visible handicap. That is more handicaps than the previous version had
+and it is the honest way round: the number is printed on the card the player
+reads before starting.
+
+The bot levels are also further apart than they were — the rule made the ramp
+93% where it used to be 76% — which is what leaves a gap between "normal" and
+"hard" that only HP can bridge.
+
+### The rule fixed the problem iteration 5 could not
+
+Bulwark was barred from every campaign pool for opening 86–96% of the rows it
+appeared in. It is back in the Heavyweight, unchanged, because its pick priority
+across the whole set fell from 72% to 34% on its own: an 8-power body under this
+rule is not a prize, it is a commitment to finding exactly 3 more.
+
+### Final curve, 1500 mirrored matches per arm
+
+| # | encounter | good player | average player | knockouts | top pick |
+|---|---|---|---|---|---|
+| 1 | Cub | 82.8% | 81.4% | 38% | 61% |
+| 2 | Pack Leader | 77.7% | 69.3% | 12% | 76% |
+| 3 | Assembler | 74.9% | 57.4% | 17% | 65% |
+| 4 | Pyromancer | 74.8% | 41.2% | 42% | 68% |
+| 5 | Quiet Thief | 68.7% | 43.7% | 17% | 64% |
+| 6 | Courier | 61.4% | 43.1% | 17% | 70% |
+| 7 | Heavyweight | 52.1% | 28.1% | 4% | 77% |
+| 8 | Archivist | 48.8% | 27.2% | 13% | 45% |
+
+Monotonic for the strong-player model. The average-player column inverts once at
+Pyromancer → Quiet Thief, the same structural floor as before: a `normal` bot
+against a `normal` bot is a mirror match and sits near 45% whatever the pool is.
+
+No encounter is decided by a single card any more — the worst top pick is 77%,
+against 95% before.
+
+### Left alone deliberately
+
+The Pyromancer keeps its 42% knockout rate. The fight is *about* a scaling card
+overshooting, so rows that end badly are the subject rather than a defect, and
+the one attempt to calm it made both numbers worse (see the table above).
+
+The Archivist drops Void Titan, and that is a measurement rather than a taste:
+with it an average player wins 11.5% of the finale, with a plain Shade in its
+place, 26.4%. A 7-power tempo bomb under `closest` costs a turn *and* most of a
+row's budget, and a player who cannot price both at once is not being examined,
+only executed.
+
 ### Known open items
 
 - **No reward for finishing.** *(Done — see iteration 6.)*

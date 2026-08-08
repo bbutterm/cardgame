@@ -12,23 +12,9 @@ import type { CardDef, LocalizedText } from './types.js';
  * making it the only thing on the table. A pool of nothing but Machines is a
  * more honest lesson about counting synergies than any tutorial text.
  *
- * The ramp is carried by the pool, not by the bot level and not by HP. Measured
- * with `packages/bot/scripts/campaign.ts` (2000+ mirrored matches per encounter,
- * the human seat driven by a `hard` bot and again by a `normal` one), skill in
- * this game lives almost entirely in cards whose value differs from their
- * printed number:
- *
- *   - a pool of nothing but vanilla is a coin flip at *every* bot level, to the
- *     decimal — both sides take the biggest number, which is exactly optimal, so
- *     the deal decides the match and the player never does;
- *   - one synergy card in eight turns a 60% matchup into an 83% one;
- *   - two of them turn it into 95%.
- *
- * So pool size and synergy count are the vernier: a card is diluted by adding
- * plain bodies around it, and that moves a matchup smoothly where the three bot
- * levels only jump (easy -> normal costs a good player ~15 points, normal ->
- * hard another ~25). Pools stay between 8 and 12 cards; beyond that an encounter
- * stops having a face, and `buildRows` deals five of them per row regardless.
+ * Rebuilt in iteration 10 for the `closest` row rule (D-21). Under a plain sum
+ * the pool was the fine lever and HP was a last resort; under this rule that is
+ * reversed, and D-23 records why.
  */
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
@@ -50,29 +36,27 @@ export interface Encounter {
   hp?: [number, number];
 }
 
-const VANILLA = ['ember', 'cog', 'shade', 'wolf-pup', 'flame-hound', 'iron-drone', 'wanderer', 'stone-boar'];
-
 export const CAMPAIGN: readonly Encounter[] = [
   {
     id: 'cub',
     name: { ru: 'Волчонок', en: 'The Cub' },
-    blurb: { ru: 'Только цифры. Больше — лучше.', en: 'Numbers only. Bigger is better.' },
+    blurb: { ru: 'Только цифры. Не больше 11.', en: 'Numbers only. No more than 11.' },
     twist: { ru: 'У Волчонка 8 HP', en: 'The Cub has 8 HP' },
     difficulty: 'easy',
     // Nothing but vanilla: the first fight has no text to read at all.
     //
-    // This is the one encounter whose win rate cannot be tuned by its pool, and
-    // the reason is the lesson itself. In a pure-vanilla row, row power is a
-    // plain sum, so taking the biggest number is exactly optimal for both sides
-    // and the deal decides the match: `easy`, `normal` and `hard` opponents all
-    // produce 50.0% against a good player, to the decimal. What is left is the
-    // easy bot's pick noise, worth 62% and no more — measured at 60% with seven
-    // vanilla cards, 60% with twelve, 62% with these eight.
+    // Two 4s are load-bearing and were not here before. The old pool topped out
+    // at 4+3+3 = 10, which means **the row could not be overshot** — the first
+    // encounter in a game about not going over 11 could not demonstrate going
+    // over 11. It also had exactly one 4, so "take the 4" was right every time
+    // and Stone Boar opened 95% of its rows.
     //
-    // 62% is too swingy for a first fight: better than a third of players would
-    // lose the first game they ever play. So the Cub gets the handicap instead,
-    // which is the one lever the pool cannot supply, and says so on the card.
-    pool: VANILLA,
+    // With two, 4+4+3 lands exactly and 4+4+4 busts, so the lesson is available
+    // in the first row a player ever sees, and the top pick fell to 60%.
+    pool: [
+      'ember', 'cog', 'shade', 'wolf-pup', 'flame-hound',
+      'iron-drone', 'wanderer', 'stone-boar', 'colossus', 'night-blade',
+    ],
     hp: [11, 8],
   },
   {
@@ -81,109 +65,142 @@ export const CAMPAIGN: readonly Encounter[] = [
     blurb: { ru: 'Звери сильнее вместе.', en: 'Beasts are stronger together.' },
     twist: { ru: '', en: '' },
     difficulty: 'easy',
-    // One axis only: Beast *faction*. Swarm Rat used to sit here and it counts a
-    // tag that spans four factions, so the row taught two different countings at
-    // once. Two four-power vanillas so the opening pick is not always the same
-    // card — with a single 4 in the pool, Stone Boar opened 87% of its rows.
-    pool: ['wolf-pup', 'stone-boar', 'pack-leader', 'beast-tamer', 'wanderer', 'cog', 'shade', 'flame-hound', 'night-blade'],
+    // One axis only: Beast *faction*. The two extra vanillas over the previous
+    // version are dilution — a synergy pool that always assembles is a pool
+    // where the synergy is not a decision.
+    //
+    // The only encounter that needs no handicap at all: the pool alone lands it
+    // where the curve wants it.
+    pool: [
+      'wolf-pup', 'stone-boar', 'pack-leader', 'beast-tamer', 'wanderer',
+      'cog', 'shade', 'flame-hound', 'night-blade', 'ember', 'iron-drone',
+    ],
   },
   {
     id: 'forge',
     name: { ru: 'Мастер-сборщик', en: 'The Assembler' },
     blurb: { ru: 'Считай механизмы, не силу.', en: 'Count the Machines, not the power.' },
-    twist: { ru: '', en: '' },
+    twist: { ru: 'У Сборщика 12 HP', en: 'The Assembler has 12 HP' },
     difficulty: 'easy',
-    // Bulwark is gone: an 8-power body opened 86% of the rows it appeared in, so
-    // the encounter's only real decision was "take the 8" and the counting never
-    // happened. Spark Relay is gone because it counts Fire, not Machines. What
-    // is left is four Machines and the card that counts them.
-    pool: ['cog', 'iron-drone', 'siege-core', 'assembler', 'wanderer', 'ember', 'shade', 'wolf-pup', 'colossus', 'flame-hound'],
+    // Four Machines and the card that counts them.
+    //
+    // Diluting this pool was tried twice and moved it the wrong way both times
+    // (83% -> 86% -> 90%): more small cards make a row easier to land on 11
+    // exactly, which helps the better player more than the worse one. Hence the
+    // HP handicap — see D-23.
+    pool: [
+      'cog', 'iron-drone', 'siege-core', 'assembler', 'wanderer',
+      'ember', 'shade', 'wolf-pup', 'colossus', 'flame-hound',
+    ],
+    hp: [11, 12],
   },
   {
     id: 'pyre',
     name: { ru: 'Пиромант', en: 'The Pyromancer' },
-    blurb: { ru: 'Огонь разгорается с каждой картой.', en: 'Fire grows with every card.' },
-    twist: { ru: '', en: '' },
+    blurb: { ru: 'Огонь разгорается. Не сгори сам.', en: 'Fire grows. Do not overshoot.' },
+    twist: { ru: 'У Пироманта 12 HP', en: 'The Pyromancer has 12 HP' },
     difficulty: 'normal',
-    // Spark Relay's +4 is a threshold, not a scale; it reads as the same lesson
-    // and is not. Wildfire is the only card here that pays per Fire card, and
-    // five of the nine are Fire, so it pays.
-    pool: ['ember', 'flame-hound', 'pyre-giant', 'wildfire', 'cinder-priest', 'cog', 'wanderer', 'shade', 'siege-core'],
+    // Wildfire pays per Fire card, and under this rule that is a genuine trap:
+    // the card that scales is the card that busts you. Five of the ten are Fire.
+    //
+    // Night Blade is here as a second 4 for the same reason the Cub has one —
+    // with a single 4 in the pool it is taken on sight and nothing is decided.
+    //
+    // This is the encounter with the most knockouts (42%), and that is left
+    // alone deliberately: the fight is about a scaling card overshooting, so
+    // rows that end badly are the subject. Padding the pool with small cards to
+    // calm it was tried and did the opposite — 88% for a good player and 63%
+    // knockouts, the same inversion the Assembler showed (see D-23).
+    pool: [
+      'ember', 'cog', 'flame-hound', 'pyre-giant', 'night-blade',
+      'wildfire', 'cinder-priest', 'shade', 'wolf-pup', 'wanderer',
+    ],
+    hp: [11, 12],
   },
   {
     id: 'thief',
     name: { ru: 'Тихий вор', en: 'The Quiet Thief' },
     blurb: { ru: 'Отбирай. Ему нужнее.', en: 'Take what they need.' },
-    twist: { ru: '', en: '' },
+    twist: { ru: 'У Вора 12 HP', en: 'The Thief has 12 HP' },
     difficulty: 'normal',
-    // Shadow's weaken and peek: the fight where denying beats building. Void
-    // Titan left — a tempo bomb is the *next* encounter's lesson, and it was
-    // being taken ahead of the denial cards. Diluted to twelve so Shadow Broker
-    // is a threat to answer rather than a coin flip on who sees it first.
+    // Shadow's weaken and peek: the fight where denying beats building. Weaken
+    // got strictly better under this rule — it can no longer rescue a busted
+    // opponent, so every point of it is pure subtraction — which is exactly the
+    // lesson this encounter exists to teach.
+    //
+    // Siege Core is here as a second 4 rather than a twelfth small body: with
+    // one, Stone Boar was taken on sight in 79% of the rows it appeared in and
+    // the denial cards were competing for second place. With two it is 64%.
     pool: [
       'shade', 'night-blade', 'shadow-broker', 'nightmare', 'seer',
-      'wanderer', 'cog', 'stone-boar', 'flame-hound', 'iron-drone', 'ember', 'wolf-pup',
+      'wanderer', 'cog', 'stone-boar', 'flame-hound', 'iron-drone', 'ember', 'siege-core',
     ],
+    hp: [11, 12],
   },
   {
     id: 'sprint',
     name: { ru: 'Гонец', en: 'The Courier' },
     blurb: { ru: 'Три ряда. Ошибаться некогда.', en: 'Three rows. No room to misplay.' },
-    twist: { ru: '3 ряда, 7 HP', en: '3 rows, 7 HP' },
+    twist: { ru: '3 ряда · 7 HP против 8', en: '3 rows · 7 HP against 8' },
     difficulty: 'normal',
-    // Twelve, not fourteen: a three-row match deals fifteen cards, so a larger
-    // pool than this stops having a face. Iron Drone dropped for Colossus so the
-    // three rows are not all opened by the same Stone Boar.
+    // Twelve cards for fifteen dealt: at three rows a bigger pool stops having
+    // a face. Short and sharp — with damage capped at 5, seven HP is two bad
+    // rows, which is the entire point of the encounter.
     pool: [
       'ember', 'cog', 'shade', 'wolf-pup', 'flame-hound', 'wanderer', 'stone-boar', 'colossus',
       'wildfire', 'pack-leader', 'assembler', 'quickstep',
     ],
     rounds: 3,
-    hp: [7, 7],
+    hp: [7, 8],
   },
   {
     id: 'heavy',
     name: { ru: 'Тяжеловес', en: 'The Heavyweight' },
-    blurb: { ru: 'Большие цифры стоят хода.', en: 'Big numbers cost you a turn.' },
-    twist: { ru: '', en: '' },
+    blurb: { ru: 'Большая карта — почти перебор.', en: 'A big card is nearly a bust.' },
+    twist: { ru: 'У Тяжеловеса 14 HP', en: 'The Heavyweight has 14 HP' },
     difficulty: 'normal',
-    // The three pure tempo bombs. Bulwark is the fourth and it cannot be here:
-    // 8 power *and* a shield made it the opening pick of 93-96% of its rows, so
-    // there was no tempo decision left to price. The cheap 1-power cards are
-    // load-bearing — take them out and the rows flatten into 3s and 4s where
-    // nobody can be baited, and a good player's win rate falls from 58% to 44%.
+    // The encounter this rule change broke worst, and then fixed.
+    //
+    // It used to be three 7-and-8 power tempo bombs plus five 4s. Under
+    // `closest` that pool detonates: nearly every row busts somebody, each bust
+    // is the full capped 5 damage, and it measured 99.0% for a good player with
+    // 86% of matches ending by knockout. Not an encounter — a coin flip with
+    // extra steps.
+    //
+    // Now: two big bodies and a deliberate floor of 1s and 2s, because an 8
+    // under this rule is not a prize, it is a commitment to finding exactly 3
+    // more. Bulwark is back after being barred from every pool in iteration 5
+    // for opening 86-96% of its rows — the rule took care of that by itself
+    // (its pick priority across the whole set fell from 72% to 34%).
     pool: [
-      'warlord', 'void-titan', 'apex-beast',
-      'colossus', 'siege-core', 'pyre-giant', 'night-blade', 'stone-boar', 'wanderer', 'cog', 'ember', 'iron-drone',
+      'warlord', 'bulwark', 'quickstep', 'herald', 'colossus', 'wanderer',
+      'iron-drone', 'flame-hound', 'shade', 'wolf-pup', 'cog', 'ember',
     ],
+    hp: [11, 14],
   },
   {
     id: 'archivist',
     name: { ru: 'Архивариус', en: 'The Archivist' },
     blurb: { ru: 'Он знает все карты. Ты тоже.', en: 'They know every card. So do you.' },
-    twist: { ru: 'Ты начинаешь с 9 HP', en: 'You start on 9 HP' },
+    twist: { ru: '', en: '' },
     difficulty: 'hard',
     // One card per lesson the campaign taught, each with the partner that lets
-    // it fire: numbers, counting (Assembler + Siege Core), per-card scaling
-    // (Wildfire + Flame Hound), faction synergy (Pack Leader + Wolf Pup),
-    // denial, information, pick order, tempo. The partners are the whole trick —
-    // a first draft of this pool held the same synergy cards with nothing to
-    // count, so Pack Leader was a vanilla 2 that read like a combo piece.
+    // it fire: counting (Assembler + Siege Core), per-card scaling (Wildfire +
+    // Flame Hound), faction synergy (Pack Leader + Wolf Pup), denial,
+    // information, pick order.
     //
-    // The whole 37-card set was worse in both directions: 19 distinct cards a
-    // match is a lottery rather than a graduation, and against a hard bot it put
-    // an average player on 15%. Bulwark and Quickstep are the two deliberate
-    // omissions — Bulwark opened 82% of the rows it appeared in even here, and
-    // Quickstep is the one card an average player cannot use, dropping that
-    // model from 40% to 27% while leaving a good player untouched.
+    // Void Titan is the one deliberate omission, and it is a measurement rather
+    // than a taste: with it, an average player wins 11.5% of this fight; with a
+    // plain Shade in its place, 26.4%. A 7-power tempo bomb under `closest`
+    // costs a turn *and* eats most of a row's budget, and a player who cannot
+    // price both at once is not being examined, only executed.
+    //
+    // No handicap: the finale is the one fight that should be a fair one.
     pool: [
       'wanderer', 'colossus', 'flame-hound', 'wolf-pup',
       'siege-core', 'assembler', 'wildfire', 'pack-leader',
-      'nightmare', 'seer', 'herald', 'void-titan',
+      'nightmare', 'seer', 'herald', 'shade',
     ],
-    // Nine HP is the twist; the opponent gets nine too. The old 9/12 split put a
-    // good player on 31% and an average one on 15% — a wall, not a final exam.
-    hp: [9, 9],
   },
 ];
 
