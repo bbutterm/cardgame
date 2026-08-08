@@ -1,4 +1,5 @@
 import { build } from 'esbuild';
+import { writeFile } from 'node:fs/promises';
 
 /**
  * Bundles the server into a single file plain Node can run.
@@ -27,3 +28,13 @@ await build({
     js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);",
   },
 });
+
+/**
+ * The bundle is ESM, and `node dist/server.js` decides that from the nearest
+ * package.json. In this repository that is the server package, which says
+ * `"type": "module"` — but a deployment that copies only `dist/` (the Docker
+ * image does exactly that) has no such file above it, and Node falls back to
+ * reparsing the file as CommonJS and warns on every boot. Stating it inside
+ * `dist/` makes the directory self-describing wherever it is copied to.
+ */
+await writeFile('dist/package.json', JSON.stringify({ type: 'module' }, null, 2) + '\n');

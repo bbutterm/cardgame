@@ -595,6 +595,76 @@ size fails on seed choice alone. The tight number is measured, not asserted.
 - `pnpm balance` listed every grid except `pool` in its unknown-grid error — the
   one that swaps decks, and the one this iteration needed.
 
+---
+
+## Iteration 7 — deployable by connecting the repository
+
+The goal was "point a host at the repo and it works". It did not, and the reason
+was one line of client code: the socket is opened with a bare `io()` and the
+leaderboard is fetched from `/api/leaderboard`, both same-origin, with no
+configurable backend URL anywhere. In `pnpm dev` the Vite proxy supplies that
+origin. In production nothing did — the server answered `/api/*` and 404'd
+everything else, so a deploy needed a reverse proxy in front of two processes to
+recreate what the dev server was doing for free.
+
+So the server now serves the built client itself, from the same port. `pnpm
+build && pnpm start` is the entire contract, `PORT` comes from the environment,
+and bot, campaign, online and leaderboard all work off one process.
+
+`packages/server/src/static.ts` is hand-rolled rather than express or sirv: a
+single-page app with one hashed asset directory is about sixty lines of
+conditions, and the server had no other reason to carry a framework. The two
+decisions inside it that are not obvious:
+
+- **Hashed assets are immutable, everything else is `no-cache`.** Names under
+  `/assets/` carry a content hash so they can be cached for a year, but
+  `index.html` and `sw.js` must be revalidated — cache either one and a deploy
+  never reaches a browser that already visited.
+- **A miss under `/assets/` is a 404, not the SPA shell.** The fallback is right
+  for client routes and wrong here: a stale `index.html` asking for a bundle
+  this deploy no longer has would receive HTML where it expects JavaScript, and
+  fail with a syntax error instead of a clean miss the service worker can handle.
+
+Path traversal is guarded even though `new URL()` has already resolved `..` and
+`%2e%2e` out of the pathname before the handler sees it. The guard is two lines
+and the cost of being wrong about that is arbitrary file read.
+
+### What it exposed
+
+**CORS was `origin: true`**, which does not mean "same origin" — it reflects
+whatever `Origin` the request carried, so any page on the internet could open a
+socket to the server. It was defensible while the client was served from a
+different port; it is not defensible now, and it is `origin: false`.
+
+**The bundle did not describe itself.** `node dist/server.js` decides ESM vs
+CommonJS from the nearest `package.json`, which in the repository is the server
+package. An image that copies only `dist/` has no such file above it, so Node
+fell back to reparsing and warned on every boot. `bundle.mjs` now writes
+`dist/package.json` with `{"type":"module"}`, which makes the directory correct
+wherever it is copied.
+
+### Verified
+
+Clean rebuild, then `pnpm start` on a host-assigned port, then two browser
+contexts at 360px: room created, code joined, both players dealt a five-card row
+with the timer running. Static serving has its own tests against a fixture
+directory (so the suite does not need a client build first) covering content
+types, cache headers, SPA fallback, the `/assets/` 404, four traversal attempts,
+and starting with no client bundle at all.
+
+The Dockerfile is the one artifact I could not verify — no Docker daemon in this
+environment. Its layout was reproduced by hand instead: `socket.io` installed
+standalone with npm (5.9 MB, the bundle's only external dependency), `dist/`
+copied beside it, started exactly as `CMD` does. That runs and serves. The parts
+I could not exercise are the two `COPY --from=build` lines and the base image.
+
+### Still true before this faces the public
+
+`identify` trusts a raw player id, and that is the whole authentication story —
+anyone who learns another player's id can claim their rating. It has been an
+open item since iteration 4; making the thing one click from deployable is what
+turns it from theoretical into scheduled.
+
 ### Known open items
 
-- **No reward for finishing.** *(Done — see above.)*
+- **No reward for finishing.** *(Done — see iteration 6.)*

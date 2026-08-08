@@ -48,6 +48,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   campaign always deal from the base 30.
 
 **Server**
+- Serves the built client from the same process and port, so `pnpm build` then
+  `pnpm start` is the whole deployment contract. The client opens its socket
+  with a bare `io()` and fetches `/api/leaderboard` with no configurable backend
+  URL, so same-origin is the only shape it knows — previously the only way to
+  run it in production was a reverse proxy stitching two processes together.
+  SPA fallback, hashed assets cached immutably, `index.html` and `sw.js` never;
+  a missing bundle logs "API only" rather than failing to start.
+- `Dockerfile` for hosts that want an image instead of a build command.
 - Authoritative Socket.io. Clients send intent, never state; every action is
   re-validated and every snapshot filtered through `viewFor()`.
 - Room codes, quick-match queue, ELO behind a repository interface, 30s
@@ -87,6 +95,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - No rate limiting anywhere: one socket could fill the player table by looping
   `identify` with random ids.
 - `rematch` mid-match reseeded a live board, an exit from a losing ranked game.
+- Socket.io ran with `cors: { origin: true }`, which reflects whatever asks and
+  let any page on the internet open a socket. Now that the client is served from
+  the same origin, cross-origin sockets have no legitimate case and are refused.
 
 ### Fixed
 - Reconnect: a lingering old socket's `disconnect` wiped the seat its own

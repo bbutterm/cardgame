@@ -1,4 +1,6 @@
 import { createServer } from 'node:http';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Server, type Socket } from 'socket.io';
 import { isOver, other, type MatchConfig, type PlayerIndex } from '@delezh/engine';
 import {
@@ -12,6 +14,7 @@ import {
 } from '@delezh/protocol';
 import { createRatingRepository, scoreMatch, type PlayerRecord, type RatingRepository } from './ratings.js';
 import { advance, RoomStore, snapshotFor, startMatch, summarize, type Room, type Seat } from './rooms.js';
+import { createStaticHandler, type StaticHandler } from './static.js';
 
 const TICK_MS = 500;
 /** Rooms nobody ever joined are swept after this long. */
@@ -22,6 +25,11 @@ export interface ServerOptions {
   repository?: RatingRepository;
   /** Overrides the pick timer and reconnect grace, so tests need not wait. */
   matchConfig?: Partial<MatchConfig>;
+  /**
+   * Directory of the built client to serve. Defaults to the bundle's sibling
+   * `client/`, which is where `pnpm build` puts it; `false` disables serving.
+   */
+  clientDir?: string | false;
 }
 
 export interface RunningServer {
@@ -85,6 +93,12 @@ function releaseSeat(playerId: string, forfeit: boolean): void {
   rooms.leave(room, playerId);
 }
 
+/**
+ * Set once the client bundle is located. Requests that arrive before that are
+ * answered from the API surface alone, which is all that exists in tests.
+ */
+let serveStatic: StaticHandler | null = null;
+
 const http = createServer((req, res) => {
   // A tiny REST surface for things that do not need a socket.
   if (req.url?.startsWith('/api/leaderboard')) {
@@ -106,11 +120,26 @@ const http = createServer((req, res) => {
     res.end(JSON.stringify({ ok: true, rooms: rooms.all().length, queue: queue.length }));
     return;
   }
+  if (serveStatic) {
+    void serveStatic(req, res).then(
+      (handled) => {
+        if (!handled) res.writeHead(404).end();
+      },
+      (error: unknown) => {
+        console.error('[static]', error);
+        if (!res.headersSent) res.writeHead(500).end();
+      },
+    );
+    return;
+  }
   res.writeHead(404).end();
 });
 
 const io = new Server<ClientToServer, ServerToClient>(http, {
-  cors: { origin: true, credentials: true },
+  // The client is served from this same origin, so cross-origin sockets are
+  // never a legitimate case. `origin: true` reflected whatever asked, which let
+  // any page on the internet open a socket here.
+  cors: { origin: false },
   // Mobile networks drop and resume constantly; a generous timeout keeps a
   // brief tunnel change from being treated as a disconnect at all.
   pingTimeout: 25_000,
@@ -484,7 +513,25 @@ const tick = setInterval(() => {
 }, TICK_MS);
 tick.unref?.();
 
-return new Promise<RunningServer>((resolve) => {
+/**
+ * Where `pnpm build` leaves the client, relative to the bundled server. The
+ * bundle lands in `packages/server/dist/`, so the client's own `dist` is two
+ * levels up — resolved from the module's own URL rather than `process.cwd()`,
+ * because a host is free to start the process from anywhere.
+ */
+const DEFAULT_CLIENT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'client', 'dist');
+
+return (async () => {
+  if (options.clientDir !== false) {
+    const dir = options.clientDir ?? process.env.CLIENT_DIR ?? DEFAULT_CLIENT_DIR;
+    serveStatic = await createStaticHandler(dir);
+    // Not fatal: an API-only deployment behind a CDN is a legitimate setup, and
+    // so is `pnpm dev`, where Vite serves the client. But it is the difference
+    // between a working game and a blank page, so it says which one happened.
+    console.log(serveStatic ? `[delezh] serving client from ${dir}` : `[delezh] no client bundle at ${dir}, API only`);
+  }
+
+  return new Promise<RunningServer>((resolve) => {
   http.listen(PORT, () => {
     const address = http.address();
     const port = typeof address === 'object' && address ? address.port : PORT;
@@ -500,5 +547,6 @@ return new Promise<RunningServer>((resolve) => {
         }),
     });
   });
-});
+  });
+})();
 }

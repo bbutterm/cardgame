@@ -53,8 +53,41 @@ the client bundle, and the app is an installable PWA that works offline.
 | `pnpm sim --matches 3000` | per-card balance report |
 | `pnpm balance --grid fine` | sweep match config (HP, compensation, rules) |
 
-Server environment: `PORT` (default 8787), `RATINGS_PATH` (default
-`./data/ratings.json`, or `:memory:` to keep nothing).
+---
+
+## Deploying
+
+Two commands, one process, one port:
+
+```bash
+pnpm build     # client bundle + server bundle
+pnpm start     # serves both on $PORT
+```
+
+`pnpm build` puts the client in `packages/client/dist`, and the server serves it
+from there — same origin as `/api` and the socket. That is not a convenience:
+the client opens its socket with a bare `io()` and fetches `/api/leaderboard`
+with no configurable backend URL anywhere, so same-origin is the only shape it
+knows. Point a host at this repository with those two commands and everything
+works — bot, campaign, online, leaderboard.
+
+| variable | default | notes |
+|---|---|---|
+| `PORT` | `8787` | hosts that assign a port are picked up automatically |
+| `RATINGS_PATH` | `./data/ratings.json` | needs durable storage, or ratings reset on restart; `:memory:` to keep nothing |
+| `CLIENT_DIR` | the sibling `client/dist` | only needed if the bundle is moved |
+
+A `Dockerfile` is included for hosts that want an image rather than a build
+command; it produces the same single process. Serving the client from a CDN
+instead is supported — start the server without a client bundle and it logs
+`API only` rather than failing — but then the CDN has to proxy `/api` and
+`/socket.io` back to it, which is the setup this arrangement exists to avoid.
+
+**Before opening it to the public**, read the security notes at the end of
+`PROGRESS.md`. In particular `identify` currently trusts a raw player id, which
+is the entire authentication story: anyone who learns another player's id can
+claim their rating. That is fine for a demo and not fine for a public
+leaderboard.
 
 ---
 
