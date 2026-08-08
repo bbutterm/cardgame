@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { applyAction, createMatch, other, type MatchState, type PlayerIndex } from '@delezh/engine';
+import {
+  applyAction,
+  createMatch,
+  other,
+  type MatchConfig,
+  type MatchState,
+  type PlayerIndex,
+} from '@delezh/engine';
+import type { CardDef } from '@delezh/cards';
 import { chooseCard, type BotLevel } from '@delezh/bot';
 import { EMOTE_KEYS } from '@delezh/protocol';
 import { useMatchFeed } from './useMatchFeed.js';
@@ -21,6 +29,16 @@ function newSeed(): string {
 
 export interface BotMatchOptions {
   level: BotLevel;
+  /** Card pool. Defaults to the base set, which is what a free match uses. */
+  cards?: readonly CardDef[];
+  config?: Partial<MatchConfig>;
+  /** Starting HP as [you, bot]. Campaign encounters use it for a handicap. */
+  hp?: [number, number];
+  /**
+   * Fixed seat, so a handicap lands on the right player. A free match randomises
+   * who picks first; a campaign encounter still does, but the HP array is
+   * written from the human's point of view either way.
+   */
 }
 
 /**
@@ -28,7 +46,7 @@ export interface BotMatchOptions {
  * runs, so a bot game and an online game follow identical rules — the only
  * difference is who produces the opponent's action.
  */
-export function useBotMatch({ level }: BotMatchOptions): MatchController {
+export function useBotMatch({ level, cards, config, hp }: BotMatchOptions): MatchController {
   const me: PlayerIndex = 0;
   const bot = other(me);
 
@@ -52,11 +70,13 @@ export function useBotMatch({ level }: BotMatchOptions): MatchController {
 
   useEffect(() => {
     const firstPicker: PlayerIndex = Math.random() < 0.5 ? me : bot;
-    const created = createMatch({ seed, firstPicker });
+    // `hp` is written [you, bot]; seat 0 is always the human here, so it maps
+    // straight across and stays correct whoever picks first.
+    const created = createMatch({ seed, firstPicker, cards, config, hp });
     stateRef.current = created.state;
     setState(created.state);
     feedRef.current.reset();
-  }, [seed, me, bot]);
+  }, [seed, me, bot, cards, config, hp]);
 
   const act = useCallback(
     (player: PlayerIndex, action: { type: 'pick'; uid: string } | { type: 'timeout' }) => {

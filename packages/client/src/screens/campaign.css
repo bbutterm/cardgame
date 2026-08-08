@@ -1,0 +1,207 @@
+.campaign {
+  gap: 0.7rem;
+}
+
+.campaign__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.campaign__progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.campaign__bar {
+  flex: 1;
+  height: 0.7rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+
+.campaign__bar-fill {
+  height: 100%;
+  background: var(--good);
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.campaign__done {
+  padding: 0.5rem;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard);
+  background: var(--accent);
+  text-align: center;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.campaign__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* The list is the only thing allowed to scroll; the header and the progress
+     bar stay put so a player always knows where they are in the run. */
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.campaign__list::-webkit-scrollbar {
+  display: none;
+}
+
+.campaign__row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  /* Comfortably above the 44px tap-target floor. */
+  min-height: 3.9rem;
+  padding: 0.4rem 0.5rem;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard-sm);
+  background: var(--paper);
+  text-align: left;
+  transition: transform 90ms ease, box-shadow 90ms ease;
+}
+
+.campaign__row:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+
+.campaign__row.is-cleared {
+  background: color-mix(in srgb, var(--good) 22%, var(--paper));
+}
+
+.campaign__row.is-locked {
+  opacity: 0.45;
+  border-style: dashed;
+  box-shadow: none;
+  cursor: default;
+}
+
+.campaign__portrait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.9rem;
+  height: 2.9rem;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--paper-2);
+}
+
+.campaign__portrait-svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.campaign__lock {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.campaign__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.campaign__name {
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.campaign__blurb {
+  opacity: 0.62;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.campaign__twist {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  background: var(--accent);
+  font-size: 0.65rem;
+}
+
+.campaign__state {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.campaign__tick {
+  width: 1.7rem;
+  height: 1.7rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--good);
+  font-weight: 900;
+}
+
+.campaign__diff {
+  padding: 0.15rem 0.4rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.campaign__diff--easy { background: var(--good); }
+.campaign__diff--normal { background: var(--accent); }
+.campaign__diff--hard { background: var(--accent-2); }
+
+.campaign__sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(18, 16, 14, 0.7);
+}
+
+.campaign__sheet-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.75rem;
+}
+
+.campaign__question {
+  padding: 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+}
+
+/* Narrow phones: the blurb is the first thing to go, the name never is. */
+@media (max-width: 340px) {
+  .campaign__portrait { width: 2.4rem; height: 2.4rem; }
+  .campaign__blurb { display: none; }
+}

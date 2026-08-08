@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { BotLevel } from '@delezh/bot';
+import type { Encounter } from '@delezh/cards';
 import { HomeScreen } from './screens/HomeScreen.js';
 import { BotMatchScreen } from './screens/BotMatchScreen.js';
 import { TutorialScreen } from './screens/TutorialScreen.js';
 import { SettingsScreen } from './screens/SettingsScreen.js';
 import { LeaderboardScreen } from './screens/LeaderboardScreen.js';
 import { OnlineScreen } from './screens/OnlineScreen.js';
+import { CampaignScreen } from './screens/CampaignScreen.js';
 
 type Route =
   | { name: 'home' }
-  | { name: 'bot'; level: BotLevel }
+  | { name: 'bot'; level: BotLevel; encounter?: Encounter }
+  | { name: 'campaign' }
   | { name: 'online'; join?: string }
   | { name: 'tutorial' }
   | { name: 'leaderboard' }
@@ -18,7 +21,7 @@ type Route =
 const TUTORIAL_SEEN = 'delezh.tutorialSeen';
 
 /**
- * Screen routing is a plain state machine rather than a router: there are six
+ * Screen routing is a plain state machine rather than a router: a handful of
  * screens, no deep links except a room invite, and shipping a routing library
  * to a phone for that would be a poor trade.
  */
@@ -43,7 +46,25 @@ export function App() {
 
   switch (route.name) {
     case 'bot':
-      return <BotMatchScreen level={route.level} onHome={home} />;
+      return (
+        <BotMatchScreen
+          level={route.level}
+          encounter={route.encounter}
+          // Beating a campaign fight returns to the map, not the main menu, so
+          // the next opponent unlocking is the thing you see.
+          onHome={route.encounter ? () => setRoute({ name: 'campaign' }) : home}
+        />
+      );
+
+    case 'campaign':
+      return (
+        <CampaignScreen
+          onPlay={(encounter) =>
+            setRoute({ name: 'bot', level: encounter.difficulty as BotLevel, encounter })
+          }
+          onBack={home}
+        />
+      );
 
     case 'online':
       return <OnlineScreen joinCode={route.join} onHome={home} />;
@@ -69,6 +90,7 @@ export function App() {
       return (
         <HomeScreen
           onPlayBot={(level) => setRoute({ name: 'bot', level })}
+          onCampaign={() => setRoute({ name: 'campaign' })}
           onPlayOnline={() => setRoute({ name: 'online' })}
           onTutorial={() => setRoute({ name: 'tutorial' })}
           onLeaderboard={() => setRoute({ name: 'leaderboard' })}

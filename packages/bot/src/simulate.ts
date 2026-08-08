@@ -182,12 +182,15 @@ export function playMatch(options: {
   cards?: readonly CardDef[];
   firstPicker?: PlayerIndex;
   random?: () => number;
+  /** Starting HP per seat, for campaign encounters that carry a handicap. */
+  hp?: [number, number];
 }): MatchOutcome {
   const created = createMatch({
     seed: options.seed,
     config: options.config,
     cards: options.cards,
     firstPicker: options.firstPicker,
+    hp: options.hp,
   });
   let state = created.state;
   let picks = 0;

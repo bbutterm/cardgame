@@ -27,6 +27,14 @@ export interface CreateMatchOptions {
    * are supplied. Used by tests and by server-side replays of a recorded match.
    */
   rows?: string[][];
+  /**
+   * Starting HP per seat, overriding `startHp` and `secondPickerHpBonus`.
+   *
+   * The config pair can only express a symmetric rule plus compensation for the
+   * seat, which is right for a fair match and cannot express a handicap. The
+   * campaign needs one.
+   */
+  hp?: [number, number];
 }
 
 function emptyPlayer(hp: number): PlayerState {
@@ -65,8 +73,10 @@ export function createMatch(options: CreateMatchOptions): ApplyResult {
   const firstPicker: PlayerIndex = options.firstPicker ?? ((rng.int(2) === 0 ? 0 : 1) as PlayerIndex);
   const second = other(firstPicker);
 
-  const players: [PlayerState, PlayerState] = [emptyPlayer(config.startHp), emptyPlayer(config.startHp)];
-  players[second] = emptyPlayer(config.startHp + config.secondPickerHpBonus);
+  const players: [PlayerState, PlayerState] = options.hp
+    ? [emptyPlayer(options.hp[0]), emptyPlayer(options.hp[1])]
+    : [emptyPlayer(config.startHp), emptyPlayer(config.startHp)];
+  if (!options.hp) players[second] = emptyPlayer(config.startHp + config.secondPickerHpBonus);
   players[second].pickedSecond = true;
 
   const state: MatchState = {

@@ -263,17 +263,27 @@ export interface CardArtProps {
   faction: Faction;
   /** Overrides the generated art — the slot real illustrations drop into. */
   art?: string;
+  /**
+   * Forces a composition family instead of letting the seed choose.
+   *
+   * Cards do not need this — thirty random draws across six families read as
+   * variety. A fixed cast does: the campaign's eight opponents are a list the
+   * player scans top to bottom, and two of them landing on the same family in
+   * the same palette looked like a rendering bug.
+   */
+  composition?: number;
   className?: string;
 }
 
-export function CardArt({ cardId, faction, art, className }: CardArtProps) {
+export function CardArt({ cardId, faction, art, composition, className }: CardArtProps) {
   const shapes = useMemo(() => {
     if (art) return null;
     const rng = createRng(`art:${cardId}`);
     const palette = FACTION_PALETTES[faction];
-    const composition = COMPOSITIONS[rng.int(COMPOSITIONS.length)] as (ctx: Ctx) => ReactElement[];
-    return composition({ rng, palette });
-  }, [cardId, faction, art]);
+    const index = composition === undefined ? rng.int(COMPOSITIONS.length) : composition % COMPOSITIONS.length;
+    const draw = COMPOSITIONS[index] as (ctx: Ctx) => ReactElement[];
+    return draw({ rng, palette });
+  }, [cardId, faction, art, composition]);
 
   if (art) {
     return <img className={className} src={art} alt="" draggable={false} loading="lazy" />;
@@ -292,6 +302,9 @@ export function CardArt({ cardId, faction, art, className }: CardArtProps) {
     </svg>
   );
 }
+
+/** How many composition families exist, for callers that spread across them. */
+export const COMPOSITION_COUNT = COMPOSITIONS.length;
 
 export function factionColor(faction: Faction): string {
   return FACTION_PALETTES[faction][0];

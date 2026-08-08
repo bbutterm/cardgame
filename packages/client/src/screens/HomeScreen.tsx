@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import type { BotLevel } from '@delezh/bot';
+import { CAMPAIGN } from '@delezh/cards';
 import { useI18n, LOCALES } from '../i18n/index.js';
+import { loadProgress } from '../campaign.js';
 import { playSound } from '../audio.js';
 import { loadProfile } from '../profile.js';
 import './home.css';
 
 export interface HomeScreenProps {
   onPlayBot: (level: BotLevel) => void;
+  onCampaign: () => void;
   onPlayOnline: () => void;
   onTutorial: () => void;
   onLeaderboard: () => void;
@@ -15,10 +18,18 @@ export interface HomeScreenProps {
 
 const LEVELS: BotLevel[] = ['easy', 'normal', 'hard'];
 
-export function HomeScreen({ onPlayBot, onPlayOnline, onTutorial, onLeaderboard, onSettings }: HomeScreenProps) {
+export function HomeScreen({
+  onPlayBot,
+  onCampaign,
+  onPlayOnline,
+  onTutorial,
+  onLeaderboard,
+  onSettings,
+}: HomeScreenProps) {
   const { t, locale, setLocale } = useI18n();
   const [choosing, setChoosing] = useState(false);
   const profile = loadProfile();
+  const campaignDone = loadProgress().cleared.length;
 
   return (
     <div className="screen home">
@@ -78,6 +89,14 @@ export function HomeScreen({ onPlayBot, onPlayOnline, onTutorial, onLeaderboard,
               }}
             >
               {t('home.playBot')}
+            </button>
+            <button type="button" className="btn" onClick={onCampaign}>
+              {t('home.campaign')}
+              {campaignDone > 0 && (
+                <span className="chip home__badge">
+                  {campaignDone}/{CAMPAIGN.length}
+                </span>
+              )}
             </button>
             <button type="button" className="btn" onClick={onPlayOnline}>
               {t('home.playOnline')}

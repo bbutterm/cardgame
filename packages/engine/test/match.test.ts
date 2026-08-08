@@ -319,3 +319,31 @@ describe('match completion', () => {
     expect(knockouts).toBeGreaterThan(0);
   });
 });
+
+describe('starting hp override', () => {
+  it('sets each seat independently, ignoring the seat compensation', () => {
+    // The config pair can only describe a fair match plus seat compensation.
+    // A campaign handicap needs the two seats set outright.
+    const { state } = createMatch({ seed: 'handicap', firstPicker: 0, hp: [9, 12] });
+    expect(state.players[0].hp).toBe(9);
+    expect(state.players[1].hp).toBe(12);
+    expect(state.players[0].maxHp).toBe(9);
+    expect(state.players[1].maxHp).toBe(12);
+    // The seat is still recorded, it just no longer pays out in HP.
+    expect(state.players[1].pickedSecond).toBe(true);
+  });
+
+  it('leaves the fair-match path untouched when omitted', () => {
+    const { state } = createMatch({ seed: 'handicap', firstPicker: 0 });
+    expect(state.players[0].hp).toBe(state.config.startHp);
+    expect(state.players[1].hp).toBe(state.config.startHp + state.config.secondPickerHpBonus);
+  });
+
+  it('a handicapped player can still be healed only up to their own cap', () => {
+    let { state } = createMatch({ seed: 'handicap-cap', firstPicker: 0, hp: [4, 20] });
+    let guard = 0;
+    while (state.phase !== 'gameOver' && guard++ < 200) state = takeAny(state).state;
+    expect(state.players[0].hp).toBeLessThanOrEqual(4);
+    expect(state.players[1].hp).toBeLessThanOrEqual(20);
+  });
+});

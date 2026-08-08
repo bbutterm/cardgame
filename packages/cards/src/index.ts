@@ -5,6 +5,7 @@ import type { CardDef } from './types.js';
 export * from './types.js';
 export { CARDS } from './cards.js';
 export { EXPERIMENTAL_CARDS } from './experimental.js';
+export * from './campaign.js';
 
 /** Every card the game knows about, base set plus accepted experiments. */
 export const ALL_CARDS: readonly CardDef[] = [...CARDS, ...EXPERIMENTAL_CARDS];

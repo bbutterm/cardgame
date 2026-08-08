@@ -58,12 +58,56 @@ Server environment: `PORT` (default 8787), `RATINGS_PATH` (default
 
 ---
 
+## Campaign
+
+Eight opponents, roughly twenty minutes, offline, no account. Each fight makes
+one idea the only thing on the table:
+
+| # | opponent | what it teaches |
+|---|---|---|
+| 1 | Волчонок / The Cub | raw numbers — the pool is pure vanilla, no rules text at all |
+| 2 | Вожак стаи / Pack Leader | faction synergy |
+| 3 | Мастер-сборщик / The Assembler | counting, not adding |
+| 4 | Пиромант / The Pyromancer | per-card scaling |
+| 5 | Тихий вор / The Quiet Thief | denial and weaken |
+| 6 | Гонец / The Courier | urgency — three rows, seven HP |
+| 7 | Тяжеловес / The Heavyweight | tempo costs |
+| 8 | Архивариус / The Archivist | everything, on a handicap |
+
+The whole thing is **data**, in `packages/cards/src/campaign.ts`. An encounter is
+a card pool, a bot level, and optional config overrides — all of which
+`createMatch` already accepted. Adding or reordering fights needs no code:
+
+```ts
+{
+  id: 'frost',
+  name: { ru: 'Ледяной страж', en: 'Frost Warden' },
+  blurb: { ru: 'Щиты держат ряд', en: 'Shields hold the row' },
+  twist: { ru: '', en: '' },        // non-empty only when the rules change
+  difficulty: 'normal',            // which bot you face
+  pool: ['bulwark', 'aegis-mote', 'cog', 'iron-drone', 'siege-core', 'wanderer'],
+  rounds: 5,                        // optional
+  hp: [11, 13],                     // optional, [you, them] — the only handicap lever
+}
+```
+
+Progress lives in `localStorage`, not on the server: the campaign is
+single-player, moves no rating, and has to work on a plane. Encounters unlock
+strictly in order.
+
+Tests enforce the same discipline the cards get — every pool has at least six
+distinct cards, blurbs stay under eight words in both locales, a `twist` string
+exists exactly when the encounter changes the rules, difficulty never goes
+backwards, and every encounter is played to a finish with its own pool.
+
+---
+
 ## Structure
 
 ```
 packages/
   engine/    pure game logic — no UI, no network, no I/O
-  cards/     card data + the effect language the engine interprets
+  cards/     card data, the effect language, and the campaign — all data
   bot/       AI opponent (3 levels) and the balance simulator
   protocol/  the socket contract, shared by client and server
   server/    Socket.io: rooms, matchmaking, ELO, reconnect

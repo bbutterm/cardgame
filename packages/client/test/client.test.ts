@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_CARDS, getCard, LOCALES } from '@delezh/cards';
-import { createMatch, resolveLines, type CardInstance } from '@delezh/engine';
+import { ALL_CARDS, CAMPAIGN, encounterPool, getCard, LOCALES } from '@delezh/cards';
+import { createMatch, createRng, resolveLines, type CardInstance } from '@delezh/engine';
+import { playMatch } from '@delezh/bot/simulate';
 import { EMOTE_KEYS } from '@delezh/protocol';
 import { ru } from '../src/i18n/ru.js';
 import { en } from '../src/i18n/en.js';
 import { projectedTotal, rowTotalOf } from '../src/components/RowTotal.js';
+import { isComplete, isUnlocked } from '../src/campaign.js';
 
 /** Card instances for a hypothetical row, without spinning up a match. */
 function hand(...cardIds: string[]): CardInstance[] {
@@ -142,5 +144,97 @@ describe('dictionary is fully wired', () => {
       (key) => !source.includes(`'${key}'`) && !DYNAMIC.some((pattern) => pattern.test(key)),
     );
     expect(unused).toEqual([]);
+  });
+});
+
+describe('campaign', () => {
+  it('every encounter deals from a legal pool', () => {
+    for (const encounter of CAMPAIGN) {
+      const pool = encounterPool(encounter, ALL_CARDS);
+      // buildRows throws below rowSize distinct cards, and a pool that small
+      // would deal the identical row every match anyway.
+      expect(new Set(pool.map((c) => c.id)).size, encounter.id).toBeGreaterThanOrEqual(6);
+      expect(pool.length, encounter.id).toBeLessThanOrEqual(40);
+    }
+  });
+
+  it('every encounter is localized and readable', () => {
+    for (const encounter of CAMPAIGN) {
+      for (const locale of LOCALES) {
+        expect(encounter.name[locale].length, `${encounter.id} name`).toBeGreaterThan(0);
+        expect(encounter.blurb[locale].length, `${encounter.id} blurb`).toBeGreaterThan(0);
+        // Same eight-word discipline as card text — this renders on a list row.
+        expect(encounter.blurb[locale].split(/\s+/).length, `${encounter.id} blurb`).toBeLessThanOrEqual(8);
+      }
+    }
+  });
+
+  it('states a twist whenever it changes the rules, and only then', () => {
+    for (const encounter of CAMPAIGN) {
+      const changesRules = encounter.rounds !== undefined || encounter.hp !== undefined;
+      for (const locale of LOCALES) {
+        expect(encounter.twist[locale].length > 0, `${encounter.id} twist [${locale}]`).toBe(changesRules);
+      }
+    }
+  });
+
+  it('has unique ids and a difficulty that never goes backwards', () => {
+    const ids = CAMPAIGN.map((e) => e.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    const rank = { easy: 0, normal: 1, hard: 2 } as const;
+    for (let i = 1; i < CAMPAIGN.length; i++) {
+      expect(rank[CAMPAIGN[i]!.difficulty], `${CAMPAIGN[i]!.id} after ${CAMPAIGN[i - 1]!.id}`).toBeGreaterThanOrEqual(
+        rank[CAMPAIGN[i - 1]!.difficulty],
+      );
+    }
+  });
+
+  it('plays every encounter to a finish with its own pool and config', () => {
+    for (const encounter of CAMPAIGN) {
+      const outcome = playMatch({
+        seed: `campaign-${encounter.id}`,
+        levels: ['hard', encounter.difficulty],
+        cards: encounterPool(encounter, ALL_CARDS),
+        config: encounter.rounds !== undefined ? { rounds: encounter.rounds } : undefined,
+        hp: encounter.hp,
+        firstPicker: 0,
+        random: createRng(encounter.id).next,
+      });
+      expect(outcome.final.phase, encounter.id).toBe('gameOver');
+      expect(outcome.rounds, encounter.id).toBeLessThanOrEqual(encounter.rounds ?? 5);
+      if (encounter.hp) {
+        expect(outcome.final.players[0].maxHp, encounter.id).toBe(encounter.hp[0]);
+        expect(outcome.final.players[1].maxHp, encounter.id).toBe(encounter.hp[1]);
+      }
+    }
+  });
+});
+
+describe('campaign progression', () => {
+  it('opens only the first encounter on a fresh save', () => {
+    const fresh = { cleared: [] as string[] };
+    expect(isUnlocked(0, fresh)).toBe(true);
+    for (let i = 1; i < CAMPAIGN.length; i++) expect(isUnlocked(i, fresh)).toBe(false);
+    expect(isComplete(fresh)).toBe(false);
+  });
+
+  it('opens the next one only when the previous is cleared', () => {
+    const progress = { cleared: [CAMPAIGN[0]!.id] };
+    expect(isUnlocked(1, progress)).toBe(true);
+    expect(isUnlocked(2, progress)).toBe(false);
+  });
+
+  it('clearing out of order does not skip the chain', () => {
+    // Nothing in the UI allows it, but the storage is a plain array a user
+    // could edit; the gate must not depend on the count.
+    const progress = { cleared: [CAMPAIGN[3]!.id] };
+    expect(isUnlocked(1, progress)).toBe(false);
+    expect(isUnlocked(4, progress)).toBe(true);
+  });
+
+  it('reports completion only when every encounter is cleared', () => {
+    expect(isComplete({ cleared: CAMPAIGN.map((e) => e.id) })).toBe(true);
+    expect(isComplete({ cleared: CAMPAIGN.slice(0, -1).map((e) => e.id) })).toBe(false);
   });
 });
