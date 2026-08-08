@@ -165,15 +165,17 @@ export const CARDS: readonly CardDef[] = [
   {
     id: 'pack-leader',
     name: { ru: 'Вожак стаи', en: 'Pack Leader' },
-    text: { ru: '+4, если рядом Зверь', en: '+4 if you have a Beast' },
+    text: { ru: '+3, если рядом Зверь', en: '+3 if you have a Beast' },
     power: 2,
     faction: 'beast',
     rarity: 'common',
     tags: ['hunter'],
     weight: 7,
     maxCopies: 2,
+    // Same shape as Spark Relay and the same fix: a conditional that turns a 2
+    // into a 6 is a card you often cannot afford to play. 45.3% → 47.5%.
     effects: [
-      { kind: 'powerIf', amount: 4, cond: { type: 'count', counter: { scope: 'self', faction: 'beast', excludeSelf: true } } },
+      { kind: 'powerIf', amount: 3, cond: { type: 'count', counter: { scope: 'self', faction: 'beast', excludeSelf: true } } },
     ],
   },
   {
@@ -237,15 +239,18 @@ export const CARDS: readonly CardDef[] = [
   {
     id: 'spark-relay',
     name: { ru: 'Искровое реле', en: 'Spark Relay' },
-    text: { ru: '+4, если рядом карта Огня', en: '+4 if you have a Fire card' },
+    text: { ru: '+3, если рядом карта Огня', en: '+3 if you have a Fire card' },
     power: 2,
     faction: 'machine',
     rarity: 'common',
     tags: ['spark', 'construct'],
     weight: 6,
     maxCopies: 2,
+    // Its condition is the easiest in the set, so it plays as its bonus almost
+    // every time — and at +4 that is a 6, which is over half a row's budget
+    // under `closest`. It read 44.0%; at +3 it reads 48.3%.
     effects: [
-      { kind: 'powerIf', amount: 4, cond: { type: 'count', counter: { scope: 'self', faction: 'fire' } } },
+      { kind: 'powerIf', amount: 3, cond: { type: 'count', counter: { scope: 'self', faction: 'fire' } } },
     ],
   },
   {
@@ -340,14 +345,26 @@ export const CARDS: readonly CardDef[] = [
   {
     id: 'bulwark',
     name: { ru: 'Бастион', en: 'Bulwark' },
-    text: { ru: 'Щит 3. Пропусти следующий пик', en: 'Shield 3. Skip your next pick' },
+    text: { ru: 'Щит 1. Пропусти следующий пик', en: 'Shield 1. Skip your next pick' },
     power: 8,
     faction: 'machine',
     rarity: 'rare',
     tags: ['construct'],
     weight: 4,
     maxCopies: 2,
-    effects: [{ kind: 'shield', amount: 3 }, { kind: 'skipNextPick' }],
+    // Under `closest` the shield on this body is a trap, and the sign is not
+    // subtle: at shield 3 the card reads 44.4% and drops out of the corridor on
+    // some seeds, at 1 it reads 47.3%, and with no shield at all 50.3%. Shield
+    // can never cost its holder HP, so the whole effect is on the *pick* — the
+    // bot pays priority for a shield and then eats an 8-power body plus a
+    // skipped pick, which is a bad trade at a row target of 11. The body itself
+    // is not the problem: 5, 6, 7 and 9 power all measure worse than 8, because
+    // the tempo debt is a flat cost and only a big body can pay it.
+    //
+    // 1 is the smallest shippable shield. Removing it outright measures better
+    // still, and is not done here because it would leave Bulwark rules-identical
+    // to Warlord — see the report notes on the bot's shield valuation.
+    effects: [{ kind: 'shield', amount: 1 }, { kind: 'skipNextPick' }],
   },
 
   // ---------------------------------------------------------------- control
@@ -390,13 +407,17 @@ export const CARDS: readonly CardDef[] = [
   {
     id: 'oracle-coin',
     name: { ru: 'Монета оракула', en: 'Oracle Coin' },
-    text: { ru: 'Восстанови 2 HP', en: 'Restore 2 HP' },
+    text: { ru: 'Восстанови 1 HP', en: 'Restore 1 HP' },
     power: 2,
     faction: 'neutral',
     rarity: 'rare',
     tags: ['relic'],
     weight: 5,
     maxCopies: 2,
-    effects: [{ kind: 'heal', amount: 2 }],
+    // `maxRoundDamage: 5` repriced every flat-HP effect: healing 2 is now worth
+    // 40% of the worst row you can lose, where under uncapped damage it was a
+    // rounding error. At 2 the card read 56.5% and was the widest in the base
+    // set; at 1 it reads 51.6%.
+    effects: [{ kind: 'heal', amount: 1 }],
   },
 ];

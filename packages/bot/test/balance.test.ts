@@ -11,7 +11,20 @@ import { isCrossRow, simulate } from '../src/simulate.js';
  * the comment on CROSS_ROW_KINDS in simulate.ts.
  */
 
-const MATCHES = 800;
+/**
+ * 2400, not the 800 this used with the old rule.
+ *
+ * `closest` made the corridor noisier: a bust takes a whole row to zero, so a
+ * card's measured rate swings further per match. Measured across three
+ * independent seeds, cards falsely outside the corridor:
+ *
+ *   800 matches -> 3, 0, 0      1600 -> 1, 0, 0      2400 -> 0, 0, 0
+ *
+ * At 800 this suite failed on a card set that a 2500-match run put comfortably
+ * in band. A guard that flickers is worse than a slow one — it trains you to
+ * re-run the suite instead of reading it.
+ */
+const MATCHES = 2400;
 
 /** The pool a real match is dealt from: `createMatch` defaults to CARDS. */
 const shipping = simulate({
@@ -22,9 +35,15 @@ const shipping = simulate({
   mirrored: true,
 });
 
-/** Base plus the accepted experiments, which are opt-in content. */
+/**
+ * Base plus the accepted experiments, which are opt-in content.
+ *
+ * Half the sample of the shipping arm on purpose: every assertion against it is
+ * deliberately loose (the corridor for six cards, and a runaway bound), so
+ * paying full price for a precision none of them use is just a slower suite.
+ */
 const withExperiments = simulate({
-  matches: MATCHES,
+  matches: MATCHES / 2,
   seed: 'regression-exp',
   cards: ALL_CARDS,
   levels: ['hard', 'hard'],
@@ -74,7 +93,7 @@ describe('experimental pool', () => {
    * to, which is exactly why the experiments are opt-in, offline and unranked
    * rather than dealt by default.
    *
-   * The bound here is loose on purpose. 800 matches resolve a win rate to about
+   * The bound here is loose on purpose. This arm resolves a win rate to about
    * ±2 points, so a 54% assertion at this sample size would fail on seed choice
    * alone; the tight number is measured with `pnpm balance --grid pool`. What
    * this catches is a future experiment that makes the drift *run away*, which

@@ -66,7 +66,7 @@ the client bundle, and the app is an installable PWA that works offline.
 | command | what it does |
 |---|---|
 | `pnpm dev` | server + client, hot reload |
-| `pnpm test` | full test suite (engine, effects, bot, balance regression) |
+| `pnpm test` | full test suite — ~2 min, most of it the balance regression |
 | `pnpm typecheck` | strict typecheck across every package |
 | `pnpm build` | production client bundle + compiled server |
 | `pnpm sim --matches 3000` | per-card balance report |

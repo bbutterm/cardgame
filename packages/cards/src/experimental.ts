@@ -53,7 +53,7 @@ export const EXPERIMENTAL_CARDS: readonly CardDef[] = [
   {
     id: 'aegis-mote',
     name: { ru: 'Осколок эгиды', en: 'Aegis Mote' },
-    text: { ru: 'Щит 3', en: 'Shield 3' },
+    text: { ru: 'Щит 2', en: 'Shield 2' },
     power: 1,
     faction: 'machine',
     rarity: 'common',
@@ -64,9 +64,15 @@ export const EXPERIMENTAL_CARDS: readonly CardDef[] = [
     // the effect measured at roughly zero, because an 8 rarely loses.
     //
     // 4 was tuned against uncapped damage. `maxRoundDamage: 5` turned it into
-    // a near-total refund of a lost row, and the two-card seat loses more rows,
-    // so the card alone cost the first picker 3.4 points of seat fairness.
-    effects: [{ kind: 'shield', amount: 3 }],
+    // a near-total refund of a lost row, and under `closest` the two-card seat
+    // is the one that loses rows, so the card alone cost the first picker 3.4
+    // points of seat fairness at 4 and 2.6 at 3.
+    //
+    // Dropping to 2 *raised* the card's own win rate, 48.5% → 50.1%. Shield
+    // cannot cost its holder HP, so the only channel is the pick: a bigger
+    // shield buys the card priority it is not worth. Bulwark shows the same
+    // sign far more strongly — see the note there.
+    effects: [{ kind: 'shield', amount: 2 }],
     experimental: true,
   },
   {
