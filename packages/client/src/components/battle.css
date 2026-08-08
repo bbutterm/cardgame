@@ -194,11 +194,16 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-.battle__vs-target {
-  align-self: center;
-  margin-left: 0.2rem;
-  opacity: 0.6;
-  letter-spacing: 0;
+.battle__running-target {
+  font-size: 0.55em;
+  opacity: 0.55;
+  font-weight: 700;
+}
+
+.battle__running.is-bust {
+  color: var(--bad);
+  text-decoration: line-through;
+  text-decoration-thickness: 3px;
 }
 
 /* A busted side is worth nothing, so its total must not read as a score. */

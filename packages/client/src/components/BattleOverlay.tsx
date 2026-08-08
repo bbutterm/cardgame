@@ -110,6 +110,8 @@ export function BattleOverlay({ result, me, meName, themName, maxHp, config, onD
           raw={result.raw[them]}
           weakenedBy={result.weaken[me]}
           showTotal={showTotals}
+          target={target}
+          busted={scored.busted[them]}
         />
 
         {/*
@@ -125,7 +127,6 @@ export function BattleOverlay({ result, me, meName, themName, maxHp, config, onD
           <span className={`battle__vs-num ${scored.busted[me] ? 'is-bust' : ''}`}>
             {showTotals ? result.power[me] : runningOf(me)}
           </span>
-          {target !== null && <span className="battle__vs-target tiny">/{target}</span>}
         </div>
 
         <BattleSide
@@ -137,6 +138,8 @@ export function BattleOverlay({ result, me, meName, themName, maxHp, config, onD
           raw={result.raw[me]}
           weakenedBy={result.weaken[them]}
           showTotal={showTotals}
+          target={target}
+          busted={scored.busted[me]}
         />
 
         <div className={`battle__result ${showDamage ? 'is-on' : ''}`}>
@@ -206,9 +209,23 @@ interface SideProps {
   raw: number;
   weakenedBy: number;
   showTotal: boolean;
+  /** The `closest` target, or null under any rule that just sums. */
+  target: number | null;
+  busted: boolean;
 }
 
-function BattleSide({ lines, revealed, activeUid, name, total, raw, weakenedBy, showTotal }: SideProps) {
+function BattleSide({
+  lines,
+  revealed,
+  activeUid,
+  name,
+  total,
+  raw,
+  weakenedBy,
+  showTotal,
+  target,
+  busted,
+}: SideProps) {
   const t = useT();
   const running = lines.reduce((sum, line) => (revealed.has(line.uid) ? sum + line.total : sum), 0);
 
@@ -216,7 +233,12 @@ function BattleSide({ lines, revealed, activeUid, name, total, raw, weakenedBy, 
     <div className="battle__side">
       <div className="battle__side-head">
         <span className="tiny">{name}</span>
-        <span className="battle__running">{showTotal ? total : running}</span>
+        {/* The target rides with each side's own total. Printed once between
+            the two it reads as a denominator of whichever number it touches. */}
+        <span className={`battle__running ${showTotal && busted ? 'is-bust' : ''}`}>
+          {showTotal ? total : running}
+          {target !== null && <span className="battle__running-target">/{target}</span>}
+        </span>
       </div>
       <div className="battle__cards">
         {lines.map((line) => {
