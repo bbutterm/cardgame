@@ -21,11 +21,37 @@ export interface MatchConfig {
   maxRoundDamage: number;
   /** How the first picker of each row after the first is decided. */
   firstPickerRule: FirstPickerRule;
+  /** How a row is scored once both sides have their cards. */
+  rowRule: RowRule;
+  /** Target total for `rowRule: 'closest'`. Ignored by the other rules. */
+  rowTarget: number;
   /** Pick timer in ms. The host enforces it; the engine only stores it. */
   pickTimeoutMs: number;
   /** Grace period for reconnecting into a live match, in ms. */
   reconnectGraceMs: number;
 }
+
+export type RowRule =
+  /**
+   * Row power is summed, higher side wins. Simple, and measurably shallow: on a
+   * pure-vanilla pool a `hard` bot beats a `normal` one 50.0% of the time,
+   * because "take the biggest number" is exactly optimal and there is nothing
+   * left to be better at. All depth has to come from the cards.
+   */
+  | 'sum'
+  /**
+   * Closest to `rowTarget` without exceeding it; going over scores nothing.
+   * Makes a big number a liability rather than always a prize, and gives the
+   * three-card seat a real cost — it is forced to take one more card.
+   */
+  | 'closest'
+  /**
+   * Cards are placed in the order they were taken and fight the opposing card
+   * in the same position; the row goes to whoever wins more positions. An
+   * unopposed position (the three-card seat's extra card) counts as won. Makes
+   * *when* you take a card matter, not only *which*.
+   */
+  | 'lanes';
 
 export type FirstPickerRule =
   /** Players swap the first pick every row. */
@@ -46,6 +72,10 @@ export const DEFAULT_CONFIG: MatchConfig = {
   damagePerPower: 1,
   maxRoundDamage: 0,
   firstPickerRule: 'alternate',
+  // 'sum' is what shipped and what the 30 cards are balanced against. The other
+  // two are under measurement; see the row-rule section in PROGRESS.md.
+  rowRule: 'sum',
+  rowTarget: 9,
   pickTimeoutMs: 20_000,
   reconnectGraceMs: 30_000,
 };

@@ -665,6 +665,94 @@ anyone who learns another player's id can claim their rating. It has been an
 open item since iteration 4; making the thing one click from deployable is what
 turns it from theoretical into scheduled.
 
+---
+
+## Iteration 8 — how much is the rule worth?
+
+The design feedback was "it comes down to whoever has the bigger sum, that's
+dull". It is correct about the rule and wrong about the game, and the difference
+matters.
+
+### D-20 — the depth is all in the cards; the rule contributes nothing
+
+Two measurements, both on a pool of **nothing but vanilla cards**, so that the
+cards cannot answer for the rule:
+
+| matchup | strong player wins |
+|---|---|
+| `hard` vs `normal`, vanilla only | **50.0%** |
+| `hard` vs `normal`, full 30-card set | 73.9% |
+
+Fifty point zero. Two competent players on printed numbers alone, and skill is
+worth *nothing* — "take the biggest number" is not a heuristic under this rule,
+it is the optimal strategy, so there is nothing left to be better at. The full
+set rescues it to 73.9%, which means the thirty cards are carrying the entire
+game on their back. That is fragile in a specific way: every future card has to
+do the work the rule is not doing, which is why D-17 found that one synergy card
+turns a 60% matchup into 83%. It is not that the card is strong. It is that
+without it there is a vacuum.
+
+### The probe
+
+`packages/bot/scripts/depth.ts` asks the question directly: a **greedy** player
+who always takes the biggest printed number, against the `hard` bot. If greedy
+holds up, the rule has no depth, by definition.
+
+Two candidate rules are implemented behind `MatchConfig.rowRule`, defaulting to
+`sum`, alongside `firstPickerRule`'s existing three modes. Nothing reaches a
+player until one is chosen.
+
+- **`closest`** — closest to `rowTarget` without going over; over scores zero.
+  A big number becomes a liability, and the three-card seat pays for its extra
+  card by being forced to take it.
+- **`lanes`** — cards line up in the order they were taken and fight the card
+  opposite; the row goes to whoever wins more positions, and an unopposed
+  position counts as won. *When* you take a card starts mattering, not only
+  which.
+
+### Results, 1200 matches per arm, mirrored seeds
+
+Vanilla only — what the rule is worth by itself:
+
+| rule | greedy wins | first seat |
+|---|---|---|
+| `sum` (shipped) | **50.0%** | 72.0% |
+| `lanes` | 37.0% | 62.7% |
+| `closest` to 9 | 5.2% | 42.8% |
+| `closest` to 11 | 24.5% | 71.4% |
+| `closest` to 12 | 50.0% | 72.0% |
+
+Read the seat column against `sum`'s own 72%, not against 50% — the +2 HP
+compensation was tuned on the full set and is nowhere near enough on a vanilla
+pool. Two things fall out of this table. `closest` to 12 is identical to `sum`
+to the decimal, which is the mechanism confirming itself: a target nobody
+reaches is not a target. And the target is a **fairness dial** — it crosses from
+favouring the three-card seat to favouring the two-card seat between 9 and 10,
+which is a job the HP bonus is currently doing.
+
+Full 30-card set — what would actually ship:
+
+| rule | greedy wins | first seat | rows | busts |
+|---|---|---|---|---|
+| `sum` (shipped) | 16.0% | 50.2% | 4.88 | — |
+| `lanes` | 9.2% | 38.6% | 5.00 | — |
+| `closest` to 11 | 8.1% | 49.1% | 4.30 | 11.5% |
+| `closest` to 10 | 5.1% | 46.5% | 4.12 | 17.5% |
+
+`closest` to 11 is the surprise: it doubles the punishment for greedy play and
+lands on 49.1% seat fairness *with the existing HP compensation untouched*.
+`lanes` punishes greedy hardest and keeps matches at the full five rows, but
+hands the second seat a 61% edge that would need re-tuning.
+
+### Not adopted
+
+Both stay off. Changing the rule invalidates the balance of all 30 cards (every
+number was tuned against a sum), the bot's heuristic (`normal` and `easy` score
+a row by total, which under `closest` steers into a bust), the tutorial, and the
+row-total preview in the UI. That is a re-run of iterations 1 and 8, not a
+tweak — and which rule the game *should* have is a design decision, not a
+measurement. The measurement only says the current one is not pulling its weight.
+
 ### Known open items
 
 - **No reward for finishing.** *(Done — see iteration 6.)*

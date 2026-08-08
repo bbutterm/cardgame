@@ -5,6 +5,7 @@ import {
   other,
   rowPower,
   type CardInstance,
+  type MatchConfig,
   type MatchState,
   type PlayerIndex,
 } from '@delezh/engine';
@@ -32,9 +33,15 @@ function defs(cards: CardInstance[]): CardDef[] {
  * Counts synergies in both directions: the new card's own bonus and the bonus
  * it grants to cards already on the side.
  */
-function marginalPower(side: CardDef[], foe: CardDef[], card: CardDef, pickedSecond: boolean): number {
-  const before = rowPower(side, foe, pickedSecond);
-  const after = rowPower([...side, card], foe, pickedSecond);
+function marginalPower(
+  side: CardDef[],
+  foe: CardDef[],
+  card: CardDef,
+  pickedSecond: boolean,
+  rule: Pick<MatchConfig, 'rowRule' | 'rowTarget'>,
+): number {
+  const before = rowPower(side, foe, pickedSecond, 20, 20, rule);
+  const after = rowPower([...side, card], foe, pickedSecond, 20, 20, rule);
   return after - before;
 }
 
@@ -89,11 +96,12 @@ function heuristicScore(
   const mine = defs(me.row);
   const theirs = defs(foe.row);
 
-  const gain = marginalPower(mine, theirs, card, me.pickedSecond) + utilityValue(card, state, player);
+  const rule = { rowRule: state.config.rowRule, rowTarget: state.config.rowTarget };
+  const gain = marginalPower(mine, theirs, card, me.pickedSecond, rule) + utilityValue(card, state, player);
   // The deny term has to price the card as the opponent would hold it — tempo
   // cost included. Otherwise the bot "denies" a bomb the opponent could not
   // afford anyway, and overpays for it.
-  const deny = marginalPower(theirs, mine, card, foe.pickedSecond) + utilityValue(card, state, other(player));
+  const deny = marginalPower(theirs, mine, card, foe.pickedSecond, rule) + utilityValue(card, state, other(player));
 
   return gain + denyWeight * deny;
 }

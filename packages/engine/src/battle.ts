@@ -141,7 +141,7 @@ export function resolveBattle(input: BattleInput, hpMax: [number, number]): Roun
 
   const power: [number, number] = [Math.max(0, raw[0] - weaken[1]), Math.max(0, raw[1] - weaken[0])];
 
-  const diff = power[0] - power[1];
+  const diff = scoreRow(power, lines, config);
   const winner: PlayerIndex | null = diff > 0 ? 0 : diff < 0 ? 1 : null;
 
   let combat = Math.abs(diff) * config.damagePerPower;
@@ -175,12 +175,67 @@ export function resolveBattle(input: BattleInput, hpMax: [number, number]): Roun
   };
 }
 
+/**
+ * Turns two finished sides into a signed margin: positive means player 0 took
+ * the row, and the magnitude is what damage is charged on.
+ *
+ * Every rule funnels into one number so the whole of the rest of the match —
+ * shields, burn, the HP bar, the event log, the bot's rollout — is unchanged by
+ * which rule is in play.
+ */
+function scoreRow(
+  power: [number, number],
+  lines: [CardBattleLine[], CardBattleLine[]],
+  config: MatchConfig,
+): number {
+  switch (config.rowRule) {
+    case 'sum':
+      return power[0] - power[1];
+
+    case 'closest': {
+      // Over the target scores nothing at all. Deliberately harsh: a rule where
+      // busting merely costs a little is a rule players can ignore.
+      const effective = power.map((p) => (p > config.rowTarget ? 0 : p)) as [number, number];
+      return effective[0] - effective[1];
+    }
+
+    case 'lanes': {
+      // Position i against position i, in pick order. The longer side's extra
+      // card has nothing to beat, so it takes its position unopposed.
+      const length = Math.max(lines[0].length, lines[1].length);
+      let won = 0;
+      for (let i = 0; i < length; i++) {
+        const mine = lines[0][i]?.total ?? -1;
+        const theirs = lines[1][i]?.total ?? -1;
+        if (mine > theirs) won++;
+        else if (theirs > mine) won--;
+      }
+      return won;
+    }
+  }
+}
+
 function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
 }
 
-/** Convenience wrapper used by the bot to score a hypothetical row. */
-export function rowPower(cards: CardDef[], opponent: CardDef[], pickedSecond = false, hp = 20, foeHp = 20): number {
+/**
+ * Convenience wrapper used by the bot and the UI preview to score a
+ * hypothetical row.
+ *
+ * `rule` matters because under `closest` more power is not better: a side over
+ * the target is worth nothing, so a heuristic that maximises the raw total
+ * would be steering straight into a bust. Passing the config keeps the bot's
+ * idea of a good row and the resolver's idea of a won row in agreement.
+ */
+export function rowPower(
+  cards: CardDef[],
+  opponent: CardDef[],
+  pickedSecond = false,
+  hp = 20,
+  foeHp = 20,
+  rule: Pick<MatchConfig, 'rowRule' | 'rowTarget'> = { rowRule: 'sum', rowTarget: 0 },
+): number {
   const sides: [SideContext, SideContext] = [
     { cards, hp, pickedSecond },
     { cards: opponent, hp: foeHp, pickedSecond: !pickedSecond },
@@ -189,7 +244,7 @@ export function rowPower(cards: CardDef[], opponent: CardDef[], pickedSecond = f
   cards.forEach((card, i) => {
     total += lineFor({ uid: `t${i}`, cardId: card.id, row: 0, slot: i }, card, sides, 0, i).total;
   });
-  return total;
+  return rule.rowRule === 'closest' && total > rule.rowTarget ? 0 : total;
 }
 
 export function resolveLines(cards: CardDef[], opponent: CardDef[], pickedSecond = false): CardBattleLine[] {
