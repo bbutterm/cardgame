@@ -71,3 +71,39 @@ describe('row rules', () => {
     expect(resolveBattle(input, [11, 11]).winner).toBe(0);
   });
 });
+
+describe('closest: weaken cannot rescue a bust', () => {
+  const sides = (mine: string[], theirs: string[]) => ({
+    round: 0,
+    sides: [
+      { cards: mine.map(getCard), hp: 11, pickedSecond: false },
+      { cards: theirs.map(getCard), hp: 11, pickedSecond: true },
+    ] as [SideContext, SideContext],
+    instances: [
+      mine.map((cardId, i) => ({ uid: `a${i}`, cardId, row: 0, slot: i })),
+      theirs.map((cardId, i) => ({ uid: `b${i}`, cardId, row: 0, slot: i })),
+    ] as [CardInstance[], CardInstance[]],
+  });
+
+  it('a side over the target scores nothing even after being weakened onto it', () => {
+    // Warlord 8 + Colossus 4 = 12, one over a target of 11. Nightmare weakens
+    // by 2, which would land it on exactly 10 if weaken were applied first —
+    // an attack that turns a bust into the best possible row.
+    const config = withConfig({ rowRule: 'closest', rowTarget: 11 });
+    const result = resolveBattle({ ...sides(['warlord', 'colossus'], ['nightmare', 'wanderer']), config }, [11, 11]);
+
+    expect(result.raw[0]).toBe(12);
+    expect(result.weaken[1]).toBe(2);
+    // Busted, so the 5 opposite it takes the row despite being far smaller.
+    expect(result.winner).toBe(1);
+  });
+
+  it('still subtracts weaken from a side that is under the target', () => {
+    const config = withConfig({ rowRule: 'closest', rowTarget: 11 });
+    const result = resolveBattle({ ...sides(['colossus'], ['nightmare', 'wolf-pup']), config }, [11, 11]);
+    // 4 weakened to 2 against 4: the weaken decides the row rather than being
+    // ignored, which is the case the rescue guard must not break.
+    expect(result.power[0]).toBe(2);
+    expect(result.winner).toBe(1);
+  });
+});

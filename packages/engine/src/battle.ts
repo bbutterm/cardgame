@@ -141,7 +141,7 @@ export function resolveBattle(input: BattleInput, hpMax: [number, number]): Roun
 
   const power: [number, number] = [Math.max(0, raw[0] - weaken[1]), Math.max(0, raw[1] - weaken[0])];
 
-  const diff = scoreRow(power, lines, config);
+  const diff = scoreRow(raw, power, lines, config);
   const winner: PlayerIndex | null = diff > 0 ? 0 : diff < 0 ? 1 : null;
 
   let combat = Math.abs(diff) * config.damagePerPower;
@@ -175,6 +175,37 @@ export function resolveBattle(input: BattleInput, hpMax: [number, number]): Roun
   };
 }
 
+export interface RowVerdict {
+  /** What each side is actually worth under the rule; 0 for a busted side. */
+  effective: [number, number];
+  busted: [boolean, boolean];
+  /** Signed: positive means player 0 took the row. */
+  margin: number;
+  /** Combat damage before shields, cap already applied. */
+  damage: number;
+}
+
+/**
+ * The row's outcome, as the battle overlay needs to explain it.
+ *
+ * Exported because the UI has to show this arithmetic and must not re-derive
+ * it: the overlay used to print `winner − loser = damage` straight off the raw
+ * totals, which under `closest` is simply false — it ignores both the bust and
+ * the damage cap. One implementation, used by the resolver and by the screen
+ * that explains the resolver.
+ */
+export function rowVerdict(raw: [number, number], power: [number, number], config: MatchConfig): RowVerdict {
+  const busted: [boolean, boolean] =
+    config.rowRule === 'closest'
+      ? [raw[0] > config.rowTarget, raw[1] > config.rowTarget]
+      : [false, false];
+  const effective: [number, number] = [busted[0] ? 0 : power[0], busted[1] ? 0 : power[1]];
+  const margin = effective[0] - effective[1];
+  let damage = Math.abs(margin) * config.damagePerPower;
+  if (config.maxRoundDamage > 0) damage = Math.min(damage, config.maxRoundDamage);
+  return { effective, busted, margin, damage };
+}
+
 /**
  * Turns two finished sides into a signed margin: positive means player 0 took
  * the row, and the magnitude is what damage is charged on.
@@ -184,6 +215,7 @@ export function resolveBattle(input: BattleInput, hpMax: [number, number]): Roun
  * which rule is in play.
  */
 function scoreRow(
+  raw: [number, number],
   power: [number, number],
   lines: [CardBattleLine[], CardBattleLine[]],
   config: MatchConfig,
@@ -192,12 +224,16 @@ function scoreRow(
     case 'sum':
       return power[0] - power[1];
 
-    case 'closest': {
+    case 'closest':
       // Over the target scores nothing at all. Deliberately harsh: a rule where
       // busting merely costs a little is a rule players can ignore.
-      const effective = power.map((p) => (p > config.rowTarget ? 0 : p)) as [number, number];
-      return effective[0] - effective[1];
-    }
+      //
+      // Busting is decided on the row's *own* power, before the opponent's
+      // weaken is subtracted. Otherwise an attack becomes a rescue: a side
+      // sitting on 13 against a target of 11 is over and worth nothing, and
+      // weakening it by 2 would hand it a perfect 11. Weaken can take a row
+      // down; it must never take a row back from the dead.
+      return rowVerdict(raw, power, config).margin;
 
     case 'lanes': {
       // Position i against position i, in pick order. The longer side's extra

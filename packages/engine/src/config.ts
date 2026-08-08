@@ -70,12 +70,16 @@ export const DEFAULT_CONFIG: MatchConfig = {
   startHp: 11,
   secondPickerHpBonus: 2,
   damagePerPower: 1,
-  maxRoundDamage: 0,
+  // Uncapped, a bust hands over the full target as damage and 27% of matches
+  // end by knockout. At 5 it is 14%, which is where `sum` sat.
+  maxRoundDamage: 5,
   firstPickerRule: 'alternate',
-  // 'sum' is what shipped and what the 30 cards are balanced against. The other
-  // two are under measurement; see the row-rule section in PROGRESS.md.
-  rowRule: 'sum',
-  rowTarget: 9,
+  // Chosen by sweep, see D-21. Against `sum`, "closest to 11" drops a greedy
+  // player from 50.0% to 23.2% while leaving seat fairness on 50.0% with the
+  // HP compensation untouched — the rule started carrying its own weight
+  // instead of leaning on the card set.
+  rowRule: 'closest',
+  rowTarget: 11,
   pickTimeoutMs: 20_000,
   reconnectGraceMs: 30_000,
 };

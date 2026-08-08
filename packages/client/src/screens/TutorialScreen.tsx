@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getCard } from '@delezh/cards';
-import { resolveLines } from '@delezh/engine';
+import { DEFAULT_CONFIG, resolveLines } from '@delezh/engine';
 import { useT } from '../i18n/index.js';
 import { CardSlotGhost, CardView } from '../components/Card.js';
 import { HpBar } from '../components/HpBar.js';
@@ -40,7 +40,16 @@ import './tutorial.css';
  * narrower cards this screen uses, which reads as a typo rather than as small
  * text.
  */
-const ROW = ['wanderer', 'colossus', 'cog', 'shade', 'ember'];
+/**
+ * Five vanilla cards, chosen so the row can actually be overshot.
+ *
+ * The old row (3/4/1/2/1) summed to 11, so the best a three-card side could
+ * reach was 9 — under a target of 11 the lesson the tutorial exists to teach
+ * could not happen in it. Three 4s and two 1s means taking every big number
+ * lands on 12 and scores nothing, which is the whole rule in one move a player
+ * makes themselves rather than reads about.
+ */
+const ROW = ['pyre-giant', 'colossus', 'siege-core', 'cog', 'ember'];
 const TOTAL = 3;
 const START_HP = 11;
 const PICK_MS = 20_000;
@@ -153,7 +162,15 @@ export function TutorialScreen({ onDone }: { onDone: () => void }) {
     const theirLines = resolveLines(theirCards, myCards, true);
     const mySum = myLines.reduce((sum, line) => sum + line.total, 0);
     const theirSum = theirLines.reduce((sum, line) => sum + line.total, 0);
-    return { myLines, theirLines, mySum, theirSum, diff: mySum - theirSum };
+
+    // Scored the way the engine scores it, rather than by subtracting sums:
+    // a tutorial that quietly teaches the wrong rule is worse than none.
+    const target = DEFAULT_CONFIG.rowTarget;
+    const myBust = mySum > target;
+    const theirBust = theirSum > target;
+    const diff = (myBust ? 0 : mySum) - (theirBust ? 0 : theirSum);
+
+    return { myLines, theirLines, mySum, theirSum, myBust, theirBust, target, diff };
   }, [mine, theirs]);
 
   useEffect(() => {
@@ -182,7 +199,9 @@ export function TutorialScreen({ onDone }: { onDone: () => void }) {
     else setStep(step + 1);
   };
 
-  const damage = Math.abs(fight.diff);
+  // Capped exactly as a real row is, so the number on screen is the number the
+  // game would deal.
+  const damage = Math.min(Math.abs(fight.diff), DEFAULT_CONFIG.maxRoundDamage || Infinity);
   const myHp = START_HP - (fight.diff < 0 ? damage : 0);
   const theirHp = START_HP - (fight.diff > 0 ? damage : 0);
   const seconds = Math.ceil(msLeft / 1000);
@@ -200,7 +219,9 @@ export function TutorialScreen({ onDone }: { onDone: () => void }) {
       : step === 1
         ? phase < 2
           ? t('tutorial.s2.body')
-          : t(fight.diff > 0 ? 'tutorial.s2.win' : 'tutorial.s2.loss', { n: damage })
+          : fight.myBust
+            ? t('tutorial.s2.bust')
+            : t(fight.diff > 0 ? 'tutorial.s2.win' : 'tutorial.s2.loss', { n: damage })
         : t('tutorial.s3.body');
 
   return (
@@ -334,6 +355,12 @@ export function TutorialScreen({ onDone }: { onDone: () => void }) {
 
         {step === 2 && (
           <div className="brut tutorial__facts">
+            {/* The target leads, because it is the one number the whole game
+                turns on and the only one a returning player might misremember. */}
+            <div className="tutorial__fact">
+              <div className="tutorial__target">{DEFAULT_CONFIG.rowTarget}</div>
+              <span className="tiny tutorial__fact-text">{t('tutorial.s2.target')}</span>
+            </div>
             <div className="tutorial__fact">
               <div className="tutorial__pips">
                 {Array.from({ length: 5 }, (_, i) => (

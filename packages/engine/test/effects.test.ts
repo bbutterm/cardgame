@@ -190,8 +190,11 @@ describe('lonerBonus', () => {
 });
 
 describe('damage rules', () => {
-  it('deals the power difference to the loser', () => {
-    const result = battle({ a: [mk({ power: 9 })], b: [mk({ power: 3 })] });
+  // Powers here stay under `rowTarget`, so these test the damage arithmetic and
+  // not the bust. A fixture that busts is testing the row rule, and there is a
+  // `row rules` block in battle.test.ts for that.
+  it('deals the margin to the loser', () => {
+    const result = battle({ a: [mk({ power: 9 })], b: [mk({ power: 3 })], config: { maxRoundDamage: 0 } });
     expect(result.hpAfter).toEqual([20, 14]);
   });
 
@@ -202,12 +205,24 @@ describe('damage rules', () => {
   });
 
   it('respects maxRoundDamage when configured', () => {
-    const result = battle({ a: [mk({ power: 20 })], b: [mk({ power: 0 })], config: { maxRoundDamage: 5 } });
+    const result = battle({ a: [mk({ power: 11 })], b: [mk({ power: 0 })], config: { maxRoundDamage: 5 } });
     expect(result.hpDelta[1]).toBe(-5);
   });
 
   it('never drops hp below zero', () => {
-    const result = battle({ a: [mk({ power: 30 })], b: [mk({ power: 0 })], hp: [20, 4] });
+    const result = battle({
+      a: [mk({ power: 11 })],
+      b: [mk({ power: 0 })],
+      hp: [20, 4],
+      config: { maxRoundDamage: 0 },
+    });
     expect(result.hpAfter[1]).toBe(0);
+  });
+
+  it('a row over the target loses to one that is barely on it', () => {
+    // The shipped rule in one line: 12 is worth nothing, 1 is worth 1.
+    const result = battle({ a: [mk({ power: 12 })], b: [mk({ power: 1 })], config: { maxRoundDamage: 0 } });
+    expect(result.winner).toBe(1);
+    expect(result.hpAfter).toEqual([19, 20]);
   });
 });

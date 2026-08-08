@@ -153,12 +153,15 @@ describe('row exhaustion', () => {
 
 describe('simultaneous death', () => {
   it('is a draw when combat and burn kill both players in the same round', () => {
-    // Player 0 draws the three strongest vanillas, player 1 the burn card: at
-    // 1 hp the row winner and the burn victim are the same two players.
+    // Player 0 draws three vanillas that land under the target, player 1 the
+    // burn card: at 1 hp the row winner and the burn victim are the same two
+    // players. Ranked ascending, not descending — three of the *strongest*
+    // vanillas now bust and hand the row to the other side, which is the
+    // opposite of what this test needs to set up.
     const burner = ALL_CARDS.find((c) => c.effects.some((e) => e.kind === 'burn'));
-    const ranked = [...VANILLA].sort((x, y) => y.power - x.power);
+    const ranked = [...VANILLA].sort((x, y) => x.power - y.power);
     const [s0, s1, s2] = ranked;
-    const weakest = ranked.filter((c) => c !== s0 && c !== s1 && c !== s2).at(-1);
+    const weakest = ranked.filter((c) => c !== s0 && c !== s1 && c !== s2).at(0);
     let { state } = createMatch({
       seed: 'double-ko',
       firstPicker: 0,
@@ -438,10 +441,12 @@ describe('config extremes', () => {
   });
 
   it('caps combat damage but not burn with maxRoundDamage', () => {
-    const brute = mk({ power: 20 });
+    // Under the target, so this measures the cap rather than the bust: 20 power
+    // would score nothing and the row would go the other way.
+    const brute = mk({ power: 11 });
     const priest = mk({ power: 0, effects: [{ kind: 'burn', amount: 2 }] });
-    // maxRoundDamage caps the row-power difference only; burn is direct damage
-    // and lands on top of the cap, exactly as it bypasses shields.
+    // maxRoundDamage caps the row margin only; burn is direct damage and lands
+    // on top of the cap, exactly as it bypasses shields.
     const result = battle({ a: [brute], b: [priest], config: { maxRoundDamage: 1 } });
     expect(result.hpDelta).toEqual([-2, -1]);
   });

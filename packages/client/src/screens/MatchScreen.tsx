@@ -56,6 +56,8 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
   const timerRatio =
     controller.timeLeftMs !== null ? Math.max(0, controller.timeLeftMs) / state.config.pickTimeoutMs : 0;
 
+  // null under any rule that just adds up, which is what RowTotal expects.
+  const rowTarget = state.config.rowRule === 'closest' ? state.config.rowTarget : null;
   const myTotal = rowTotalOf(myPlayer.row, theirPlayer.row);
   const theirTotal = rowTotalOf(theirPlayer.row, myPlayer.row);
   const myProjected = selectedCard ? projectedTotal(myPlayer.row, theirPlayer.row, selectedCard) : null;
@@ -106,7 +108,7 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
         <HpBar label={themName} hp={theirPlayer.hp} maxHp={theirPlayer.maxHp} mirrored compact />
         <div className="match__strip">
           <TakenStrip cards={theirPlayer.row} empty={t('match.theirCards')} onRead={setReading} />
-          <RowTotal total={theirTotal} label={t('match.rowTotal')} align="end" />
+          <RowTotal total={theirTotal} label={t('match.rowTotal')} align="end" target={rowTarget} />
         </div>
       </section>
 
@@ -149,7 +151,13 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
       <section className="match__side match__side--me">
         <div className="match__strip">
           <TakenStrip cards={myPlayer.row} empty={t('match.yourCards')} onRead={setReading} />
-          <RowTotal total={myTotal} projected={myProjected} label={t('match.rowTotal')} align="end" />
+          <RowTotal
+            total={myTotal}
+            projected={myProjected}
+            label={t('match.rowTotal')}
+            align="end"
+            target={rowTarget}
+          />
         </div>
         <div className="match__bottom">
           <HpBar label={meName} hp={myPlayer.hp} maxHp={myPlayer.maxHp} compact />
@@ -170,7 +178,7 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
               {getCard(selectedCard.cardId).text[locale] || t('match.tapToPick')}
             </div>
             {myProjected !== null && (
-              <RowTotal total={myTotal} projected={myProjected} label={t('match.rowTotal')} />
+              <RowTotal total={myTotal} projected={myProjected} label={t('match.rowTotal')} target={rowTarget} />
             )}
           </div>
           <button
@@ -227,6 +235,7 @@ export function MatchScreen({ controller, onExit }: MatchScreenProps) {
           meName={meName}
           themName={themName}
           maxHp={[state.players[0].maxHp, state.players[1].maxHp]}
+          config={state.config}
           onDone={controller.dismissBattle}
         />
       )}

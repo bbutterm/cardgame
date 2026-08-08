@@ -83,6 +83,48 @@ function utilityValue(card: CardDef, state: MatchState, player: PlayerIndex): nu
   return value;
 }
 
+/** Mean printed power across the set, used to guess what a forced pick costs. */
+const AVG_POWER = 2.9;
+
+/**
+ * Under `closest`, the skill the rule creates is leaving room for the cards you
+ * have not taken yet.
+ *
+ * `marginalPower` is myopic: it prices this pick alone, so a card that lands
+ * the row exactly on the target scores best — and then the next *forced* pick
+ * busts it. A player who cannot see that is playing a different, worse game,
+ * which is what a 93% gap between the rollout bot and the heuristic bot was
+ * actually measuring.
+ *
+ * Returns 0 for every other rule, so nothing else changes shape.
+ */
+function headroom(
+  state: MatchState,
+  player: PlayerIndex,
+  mine: CardDef[],
+  theirs: CardDef[],
+  card: CardDef,
+  pickedSecond: boolean,
+  rule: { rowRule: MatchConfig['rowRule']; rowTarget: number },
+): number {
+  if (rule.rowRule !== 'closest') return 0;
+
+  // Raw, not clamped: a busted row reads as 0 through `rowPower`, and the point
+  // here is to measure how far over the edge the row is heading.
+  const after = rowPower([...mine, card], theirs, pickedSecond);
+
+  // Cards left once this one is gone. Turns alternate, so of those the opponent
+  // takes the next; this side is forced into the rest by halves.
+  const left = Math.max(0, legalPicks(state, player).length - 1);
+  const forced = Math.floor(left / 2);
+
+  const projected = after + forced * AVG_POWER;
+  const over = projected - rule.rowTarget;
+  // Only overshoot is punished. Undershooting is already priced by `gain`,
+  // which wants the total as high as the clamp allows.
+  return over > 0 ? -over : 0;
+}
+
 /** Fast heuristic score — used directly by easy/normal and inside hard rollouts. */
 function heuristicScore(
   state: MatchState,
@@ -97,7 +139,10 @@ function heuristicScore(
   const theirs = defs(foe.row);
 
   const rule = { rowRule: state.config.rowRule, rowTarget: state.config.rowTarget };
-  const gain = marginalPower(mine, theirs, card, me.pickedSecond, rule) + utilityValue(card, state, player);
+  const gain =
+    marginalPower(mine, theirs, card, me.pickedSecond, rule) +
+    utilityValue(card, state, player) +
+    headroom(state, player, mine, theirs, card, me.pickedSecond, rule);
   // The deny term has to price the card as the opponent would hold it — tempo
   // cost included. Otherwise the bot "denies" a bomb the opponent could not
   // afford anyway, and overpays for it.

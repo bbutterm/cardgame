@@ -40,3 +40,17 @@
   font-size: 0.8rem;
   opacity: 0.45;
 }
+
+.rowtotal__target {
+  margin-left: -0.15rem;
+  opacity: 0.55;
+  letter-spacing: 0;
+}
+
+/* Over the target scores nothing, so it must not read like a big number. */
+.rowtotal__value.is-bust,
+.rowtotal__value--up.is-bust {
+  color: var(--bad);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}

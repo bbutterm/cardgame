@@ -432,3 +432,18 @@
     height: 1rem;
   }
 }
+
+/* The target number, shown as a card-like tile so it reads as a game value
+   rather than as body copy. */
+.tutorial__target {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard);
+  background: var(--accent);
+  font-size: 1.15rem;
+  font-weight: 900;
+}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { other, type PlayerIndex, type RoundResult } from '@delezh/engine';
+import { other, rowVerdict, type MatchConfig, type PlayerIndex, type RoundResult } from '@delezh/engine';
 import { useT } from '../i18n/index.js';
 import { CardView } from './Card.js';
 import { HpBar } from './HpBar.js';
@@ -12,6 +12,8 @@ export interface BattleOverlayProps {
   meName: string;
   themName: string;
   maxHp: [number, number];
+  /** Needed to explain the row: the target and the damage cap live here. */
+  config: MatchConfig;
   onDone: () => void;
 }
 
@@ -29,7 +31,11 @@ const STEP_MS = 340;
 const TOTALS_MS = 620;
 const DAMAGE_MS = 900;
 
-export function BattleOverlay({ result, me, meName, themName, maxHp, onDone }: BattleOverlayProps) {
+export function BattleOverlay({ result, me, meName, themName, maxHp, config, onDone }: BattleOverlayProps) {
+  // Derived by the engine, not re-derived here: the overlay's job is to explain
+  // the resolver, so it must not hold a second opinion about what happened.
+  const scored = rowVerdict(result.raw, result.power, config);
+  const target = config.rowRule === 'closest' ? config.rowTarget : null;
   const t = useT();
   const them = other(me);
 
@@ -112,9 +118,14 @@ export function BattleOverlay({ result, me, meName, themName, maxHp, onDone }: B
           one of them a question mark, was the confusing part.
         */}
         <div className={`battle__vs ${showTotals ? 'is-on' : ''}`}>
-          <span className="battle__vs-num">{showTotals ? result.power[them] : runningOf(them)}</span>
+          <span className={`battle__vs-num ${scored.busted[them] ? 'is-bust' : ''}`}>
+            {showTotals ? result.power[them] : runningOf(them)}
+          </span>
           <span className="battle__vs-x">×</span>
-          <span className="battle__vs-num">{showTotals ? result.power[me] : runningOf(me)}</span>
+          <span className={`battle__vs-num ${scored.busted[me] ? 'is-bust' : ''}`}>
+            {showTotals ? result.power[me] : runningOf(me)}
+          </span>
+          {target !== null && <span className="battle__vs-target tiny">/{target}</span>}
         </div>
 
         <BattleSide
@@ -136,14 +147,20 @@ export function BattleOverlay({ result, me, meName, themName, maxHp, onDone }: B
           {/* The arithmetic itself. The two totals were on screen but the game
               never said that their difference IS the damage — the one rule the
               whole match turns on. */}
-          {result.winner !== null && (
-            <div className="battle__math">
-              {t('battle.math', {
-                winner: result.power[result.winner],
-                loser: result.power[other(result.winner)],
-                damage: Math.abs(result.power[0] - result.power[1]),
-              })}
-            </div>
+          {/* A busted row is not arithmetic, it is a rule, and printing
+              "0 − 7 = 7" would teach the wrong one. */}
+          {scored.busted[me] || scored.busted[them] ? (
+            <div className="battle__math">{t('battle.bust', { target: target ?? 0 })}</div>
+          ) : (
+            result.winner !== null && (
+              <div className="battle__math">
+                {t('battle.math', {
+                  winner: scored.effective[result.winner],
+                  loser: scored.effective[other(result.winner)],
+                  damage: scored.damage,
+                })}
+              </div>
+            )
           )}
 
           <div className="battle__hp">

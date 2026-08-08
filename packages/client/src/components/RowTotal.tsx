@@ -5,10 +5,14 @@ import './rowtotal.css';
 /**
  * The running power of one side's row, and what a candidate pick would make it.
  *
- * The whole game is "sum of my row vs sum of theirs, the difference is damage",
- * and until this existed neither sum was on screen during the draft — the
- * numbers only appeared in the battle overlay, after the decision was made. A
- * player could not see that taking Pack Leader turns their 4 into a 9.
+ * Until this existed neither total was on screen during the draft — the numbers
+ * only appeared in the battle overlay, after the decision was made, so a player
+ * could not see that taking Pack Leader turns their 4 into a 9.
+ *
+ * Under `closest` it carries the whole rule: the target is printed beside the
+ * total, and a pick that would go over is shown going over rather than being
+ * silently clamped to nothing. A player has to be able to see the cliff before
+ * stepping off it, or the rule is a gotcha instead of a decision.
  *
  * Computed with the engine's own resolver, so the preview cannot drift from
  * what the battle will actually do.
@@ -35,20 +39,32 @@ export interface RowTotalProps {
   projected?: number | null;
   label: string;
   align?: 'start' | 'end';
+  /** The `closest` target, or null under any rule that just sums. */
+  target?: number | null;
 }
 
-export function RowTotal({ total, projected = null, label, align = 'start' }: RowTotalProps) {
+export function RowTotal({ total, projected = null, label, align = 'start', target = null }: RowTotalProps) {
   const changed = projected !== null && projected !== total;
+  const bust = target !== null && total > target;
+  const wouldBust = target !== null && changed && projected > target;
+
   return (
     <div className={`rowtotal rowtotal--${align}`}>
       <span className="rowtotal__label tiny">{label}</span>
-      <span className="rowtotal__value">{total}</span>
+      <span className={`rowtotal__value ${bust ? 'is-bust' : ''}`}>{total}</span>
+      {target !== null && <span className="rowtotal__target tiny">/{target}</span>}
       {changed && (
         <>
           <span className="rowtotal__arrow" aria-hidden="true">
             →
           </span>
-          <span className={`rowtotal__value rowtotal__value--${projected > total ? 'up' : 'down'}`}>
+          <span
+            className={`rowtotal__value rowtotal__value--${projected > total ? 'up' : 'down'} ${
+              // A pick that busts is not an increase, whatever the arithmetic
+              // says, so it must not be dressed in the same colour as one.
+              wouldBust ? 'is-bust' : ''
+            }`}
+          >
             {projected}
           </span>
         </>
