@@ -476,8 +476,20 @@ stops having a face, and a row is five cards regardless.
 
 The first draft's curve was, for a good player: 60 / **99** / 91 / 87 / 91 / 56 /
 48 / **29**. Encounters 2–5 were unloseable, 7–8 were walls, and it inverted
-three times. After tuning: **82 / 81 / 80 / 72 / 65 / 58 / 58 / 51**, monotonic,
-with an average player clearing the first three and finding the last two hard.
+three times. After tuning, at 1500 mirrored matches per arm:
+
+| model | curve | shape |
+|---|---|---|
+| strong player (`hard` bot in the human seat) | 82 / 81 / 80 / 72 / 65 / 58 / 58 / 51 | monotonic |
+| average player (`normal` bot) | 83 / 76 / 71 / 48 / 50 / 49 / 49 / 39 | one inversion, pyre → thief |
+
+Only the strong-player curve is a tuning target, and it is monotonic. The
+average-player curve is measured but cannot be flattened past encounter 4: a
+`normal` bot against a `normal` bot is a mirror match, so it sits at 48–50%
+whatever the pool holds, and the residual +1.4-point inversion at pyre → thief
+is that floor, not a design error. What the second row is actually for is the
+shape of its ends — an average player clears the first three (83 / 76 / 71) and
+is under water on the finale (39%), which is the ramp the campaign promises.
 
 Two recurring causes, both worth remembering:
 
