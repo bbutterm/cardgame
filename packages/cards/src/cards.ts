@@ -263,14 +263,17 @@ export const CARDS: readonly CardDef[] = [
   {
     id: 'nightmare',
     name: { ru: 'Кошмар', en: 'Nightmare' },
-    text: { ru: 'Оппонент теряет 2 силы', en: 'Opponent loses 2 power' },
+    text: { ru: 'Оппонент теряет 1 силу', en: 'Opponent loses 1 power' },
     power: 2,
     faction: 'shadow',
     rarity: 'rare',
     tags: ['omen'],
     weight: 5,
     maxCopies: 2,
-    effects: [{ kind: 'weaken', amount: 2 }],
+    // Under `closest` weaken never rescues a busted side and can only push the
+    // opponent away from the target, so it gained a point of value for free:
+    // at 2 this read 56.7% (58.0% on one seed). One is the ceiling now.
+    effects: [{ kind: 'weaken', amount: 1 }],
   },
   {
     id: 'mirror-idol',

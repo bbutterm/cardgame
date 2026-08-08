@@ -24,26 +24,36 @@ export const EXPERIMENTAL_CARDS: readonly CardDef[] = [
     // The only card that rewards the two-card seat without keying on the seat
     // itself, which is what made the original "+N if you picked second" card
     // unplayable (see PROGRESS.md D-07).
-    effects: [{ kind: 'lonerBonus', amount: 6 }],
+    //
+    // 7 was too strong under `sum` and 6 was right; under `closest` 6 was too
+    // strong again for a different reason — a 5-power body pairs with almost
+    // anything to land on 11 from the two-card seat, and the card alone cost
+    // the first picker 4.5 points of seat fairness.
+    effects: [{ kind: 'lonerBonus', amount: 5 }],
     experimental: true,
   },
   {
     id: 'last-stand',
     name: { ru: 'Последний рубеж', en: 'Last Stand' },
-    text: { ru: '+4, если у тебя меньше HP', en: '+4 if you have less HP' },
+    text: { ru: '+2, если у тебя меньше HP', en: '+2 if you have less HP' },
     power: 2,
     faction: 'machine',
     rarity: 'rare',
     tags: ['construct'],
     weight: 5,
     maxCopies: 2,
-    effects: [{ kind: 'powerIf', amount: 4, cond: { type: 'behind' } }],
+    // The first picker starts 2 HP down, so `behind` fires for them far more
+    // often — and at +4 the card it fired on was a 6, which is most of a row's
+    // budget under `closest`. It read 36.5% and cost the first picker 3.2
+    // points of seat fairness. At +2 the body stays playable in a three-card
+    // row and both numbers came back.
+    effects: [{ kind: 'powerIf', amount: 2, cond: { type: 'behind' } }],
     experimental: true,
   },
   {
     id: 'aegis-mote',
     name: { ru: 'Осколок эгиды', en: 'Aegis Mote' },
-    text: { ru: 'Щит 4', en: 'Shield 4' },
+    text: { ru: 'Щит 3', en: 'Shield 3' },
     power: 1,
     faction: 'machine',
     rarity: 'common',
@@ -52,7 +62,11 @@ export const EXPERIMENTAL_CARDS: readonly CardDef[] = [
     maxCopies: 2,
     // Shield on a body that expects to LOSE its row. On Bulwark's 8-power body
     // the effect measured at roughly zero, because an 8 rarely loses.
-    effects: [{ kind: 'shield', amount: 4 }],
+    //
+    // 4 was tuned against uncapped damage. `maxRoundDamage: 5` turned it into
+    // a near-total refund of a lost row, and the two-card seat loses more rows,
+    // so the card alone cost the first picker 3.4 points of seat fairness.
+    effects: [{ kind: 'shield', amount: 3 }],
     experimental: true,
   },
   {
@@ -86,16 +100,23 @@ export const EXPERIMENTAL_CARDS: readonly CardDef[] = [
   {
     id: 'night-terror',
     name: { ru: 'Ночной ужас', en: 'Night Terror' },
-    text: { ru: 'Оппонент теряет 3 силы', en: 'Opponent loses 3 power' },
+    text: { ru: 'Оппонент теряет 2 силы', en: 'Opponent loses 2 power' },
     power: 1,
     faction: 'shadow',
     rarity: 'rare',
     tags: ['omen'],
     weight: 4,
     maxCopies: 2,
-    // Twice Nightmare's weaken on a third of the body. Weaken is the one effect
-    // that can flip a row without adding anything to your own side.
-    effects: [{ kind: 'weaken', amount: 3 }],
+    // Twice Nightmare's weaken on half the body. Weaken is the one effect that
+    // can flip a row without adding anything to your own side, and under
+    // `closest` it got strictly better: it cannot rescue a busted opponent, so
+    // every point of it is pure subtraction. Both weaken cards stepped down one
+    // — at 3 this read 61.1%.
+    //
+    // Paying for weaken 3 with a bigger body instead was tried and rejected:
+    // power 5 reads 53.3% but power 6 reads 36.3%, so the design would be
+    // balanced on a one-point cliff.
+    effects: [{ kind: 'weaken', amount: 2 }],
     experimental: true,
   },
 ];
