@@ -78,7 +78,22 @@ works — bot, campaign, online, leaderboard.
 | `CLIENT_DIR` | the sibling `client/dist` | only needed if the bundle is moved |
 
 A `Dockerfile` is included for hosts that want an image rather than a build
-command; it produces the same single process. Serving the client from a CDN
+command; it produces the same single process.
+
+### Vercel, and other static hosts
+
+`vercel.json` builds the client only and publishes `packages/client/dist`, so an
+import needs no settings typed in. **This deploys the offline game, not the
+online one.** Vercel is serverless: there is no long-lived process to hold
+WebSocket connections, no shared memory for rooms, and no durable filesystem for
+ratings. Bot, campaign, tutorial and the installable PWA all work; "Play online"
+and the leaderboard report no connection, which is what the client already does
+when the server is unreachable.
+
+Making online work from a static host means putting the server somewhere that
+runs a process (Railway, Render, Fly, a VPS) and giving the client its address —
+which it currently has no way to accept, since `io()` and `/api/leaderboard` are
+both hardcoded to same-origin. That is a small change and it is not made yet. Serving the client from a CDN
 instead is supported — start the server without a client bundle and it logs
 `API only` rather than failing — but then the CDN has to proxy `/api` and
 `/socket.io` back to it, which is the setup this arrangement exists to avoid.
