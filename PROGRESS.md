@@ -18,6 +18,7 @@ reason, so a later change can tell whether it is undoing something deliberate.
 | 6 | i18n polish, in-match emotes, rematch | **done** |
 | 7 | sounds, touch gestures, tutorial | **done** |
 | 8 | experimental mechanics | **done** |
+| 9 | single-player campaign (added after the night) | **done** |
 
 ---
 
@@ -440,3 +441,84 @@ already know the rules.
 | offline | bot match playable with the network cut |
 
 Open items are listed at the end of iteration 3.
+
+---
+
+## Iteration 5 — campaign
+
+Eight opponents, roughly twenty minutes, offline. Built as data:
+`packages/cards/src/campaign.ts` is a list of (card pool, bot level, optional
+config), and `createMatch` already accepted all three. The only engine addition
+was `hp: [player, opponent]`, because the `startHp` / `secondPickerHpBonus` pair
+can describe a fair match with seat compensation and cannot describe a handicap.
+
+### D-17 — the ramp is carried by the card pool, not the bot level
+
+This was measured, and it was not what I expected. Sweeping all 8 pools against
+all 3 bot levels:
+
+- **A pure-vanilla pool is a coin flip at every bot level, to the decimal.**
+  Encounter 1 reads 50.0% against `normal` and 50.0% against `hard`. Row power
+  is a plain sum, so "take the biggest number" is exactly optimal for both
+  sides — the deal decides the match and neither player ever does.
+- **One synergy card in eight turns a 60% matchup into 83%. Two turn it into 95%.**
+  Adding Shadow Broker alone to a flat pool moved it from 50.0% to 87.5%.
+
+So skill in this game lives almost entirely in cards whose value differs from
+their printed number, and the fine lever is *dilution*: adding plain bodies
+around a synergy card moves a matchup smoothly, where the three bot levels only
+jump (easy → normal costs a good player ~15 points, normal → hard another ~25).
+
+That is also why every campaign pool is 8–12 cards. Beyond that an encounter
+stops having a face, and a row is five cards regardless.
+
+### What the tuning pass fixed
+
+The first draft's curve was, for a good player: 60 / **99** / 91 / 87 / 91 / 56 /
+48 / **29**. Encounters 2–5 were unloseable, 7–8 were walls, and it inverted
+three times. After tuning: **82 / 81 / 80 / 72 / 65 / 58 / 58 / 51**, monotonic,
+with an average player clearing the first three and finding the last two hard.
+
+Two recurring causes, both worth remembering:
+
+**A card that is strictly the best pick deletes the encounter.** Bulwark — 8
+power *and* a shield — opened 86% of the rows it appeared in the Assembler
+fight and 93–96% in the tempo fight. Neither encounter's lesson could happen
+because the only decision was "take the 8". It is now in no campaign pool, which
+is a symptom of open item 2 (Bulwark and Warlord play identically) rather than a
+fix for it.
+
+**A synergy card with no partner is a lie.** The first draft of the finale kept
+Pack Leader in a pool with no other Beast: it played 2.0 power against a printed
+2, i.e. its text could never fire. Assembler read 2.1 and Wildfire 3.0 for the
+same reason. The report script prints printed-vs-played power precisely because
+this is invisible in the data and obvious in the numbers.
+
+### D-18 — encounter 1 takes a handicap rather than a harder pool
+
+Its own lesson removes every decision (see D-17), so its win rate cannot be
+tuned by its pool: 7 vanilla cards reads 60%, 12 reads 60%, 8 reads 62%. And 62%
+is too swingy for a first fight — better than a third of players would lose the
+first game they ever play.
+
+The two available fixes were a handicap, or adding a card with rules text. The
+second would make the encounter's own blurb ("Только цифры" / "Numbers only")
+false, so: the Cub starts on 8 HP, and the card says so. This is the only
+encounter where the twist exists to fix a number rather than to be interesting,
+which is worth being honest about.
+
+### Known open items
+
+- **Sprint and Heavyweight are statistically tied** (58% vs 58%; they swap at a
+  second sample size). The pool lever is not smooth there — swapping one 1-power
+  filler in Heavyweight moves it 58 → 53 → 44 — so there is no 56% available.
+  Both are in band and not inverted, but the ladder is flat across those two.
+- **The finale ends by knockout 45% of the time** against 9% for a normal match.
+  The twist promises a short sharp fight and delivers one, but that is a large
+  variance jump for the last thing a player sees.
+- **Quickstep splits the two player models violently** — in the finale pool it
+  drops an average player from 40% to 27% while leaving a good one untouched.
+  The sharpest instance yet of the measurement problem in D-14, and the reason
+  it is not in the finale.
+- **No reward for finishing.** The obvious one is unlocking the experimental
+  cards in free play: they exist, they are balanced, and they are already opt-in.

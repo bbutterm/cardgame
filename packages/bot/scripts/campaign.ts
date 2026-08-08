@@ -16,9 +16,10 @@
  * per-card corridor machinery, plus pick-priority and pool-variety counters.
  */
 import { readFileSync } from 'node:fs';
-import { CAMPAIGN, ALL_CARDS, getCard, type Encounter } from '@delezh/cards';
+import { CAMPAIGN, getCard, type Encounter } from '@delezh/cards';
 import { applyAction, createMatch, createRng, type PlayerIndex } from '@delezh/engine';
 import { chooseCard, type BotLevel } from '../src/index.js';
+import { simulate } from '../src/simulate.js';
 
 function arg(name: string, fallback?: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`);
@@ -186,12 +187,26 @@ for (const encounter of ENCOUNTERS) {
   );
 
   if (SHOW_PRIO) {
+    // avgPower is what settles the "can the lesson actually happen" question: a
+    // synergy card whose average contributed power sits at its printed number
+    // never found its partners, however good the card reads.
+    const power = new Map(
+      simulate({
+        matches: 600,
+        seed: `pool:${encounter.id}`,
+        levels: ['hard', encounter.difficulty],
+        cards: encounter.pool.map((id) => getCard(id)),
+        config: encounter.rounds ? { rounds: encounter.rounds } : undefined,
+      }).cards.map((c) => [c.id, c.avgPower]),
+    );
     const list = [...hard.appearances.entries()]
       .map(([id, seen]) => ({ id, seen, prio: (hard.firstOut.get(id) ?? 0) / seen }))
       .sort((a, b) => b.prio - a.prio);
     for (const c of list) {
+      const def = getCard(c.id);
       console.log(
-        `    ${c.id.padEnd(18)} prio ${pct(c.prio).padStart(6)}  rows ${String(c.seen).padStart(6)}  (p${getCard(c.id).power})`,
+        `    ${c.id.padEnd(18)} prio ${pct(c.prio).padStart(6)}  rows/match ${(c.seen / hard.matches).toFixed(2)}` +
+          `  printed ${def.power}  played ${(power.get(c.id) ?? def.power).toFixed(1)}`,
       );
     }
   }
@@ -210,5 +225,3 @@ for (const model of ['hard', 'normal'] as const) {
   }
   console.log(`\n${model} model curve: ${bad.length === 0 ? 'monotonic' : `inversions at ${bad.join(', ')}`}`);
 }
-
-void ALL_CARDS;
