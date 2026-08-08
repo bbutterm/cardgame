@@ -324,6 +324,8 @@ export function TutorialScreen({ onDone }: { onDone: () => void }) {
               sum={fight.theirSum}
               shown={phase >= 1}
               lost={fight.diff > 0}
+              bust={fight.theirBust}
+              target={fight.target}
             />
             <span className="tutorial__vs">×</span>
             <FightSide
@@ -333,6 +335,8 @@ export function TutorialScreen({ onDone }: { onDone: () => void }) {
               sum={fight.mySum}
               shown={phase >= 1}
               lost={fight.diff < 0}
+              bust={fight.myBust}
+              target={fight.target}
             />
             <div className="tutorial__hp">
               <HpBar
@@ -409,6 +413,8 @@ function FightSide({
   sum,
   shown,
   lost,
+  bust,
+  target,
 }: {
   name: string;
   cards: string[];
@@ -416,6 +422,8 @@ function FightSide({
   sum: number;
   shown: boolean;
   lost: boolean;
+  bust: boolean;
+  target: number;
 }) {
   return (
     <div className="tutorial__side">
@@ -426,8 +434,15 @@ function FightSide({
             <CardView key={`${id}-${i}`} cardId={id} size="battle" livePower={lines[i]?.total} />
           ))}
         </div>
-        <span className={`tutorial__sum ${shown && lost ? 'tutorial__sum--lose' : ''} ${shown ? 'is-shown' : ''}`}>
+        <span
+          className={`tutorial__sum ${shown && lost ? 'tutorial__sum--lose' : ''} ${
+            shown && bust ? 'tutorial__sum--bust' : ''
+          } ${shown ? 'is-shown' : ''}`}
+        >
           {shown ? sum : '?'}
+          {/* The target rides along with the total: the lesson is the pair of
+              numbers, and a lone "9" still reads as "bigger is better". */}
+          {shown && <span className="tutorial__sum-target">/{target}</span>}
         </span>
       </div>
     </div>

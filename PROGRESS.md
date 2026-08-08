@@ -39,6 +39,8 @@ the simulator reproduce any match exactly.
 - 5 rows × 5 cards, drafted alternately, so each row splits 3/2.
 - First pick alternates every row. Control cards can override it.
 - Row power is summed, the lower side takes the difference as damage.
+  *(Superseded in iteration 9 — see D-21. The row now goes to whoever is
+  closest to 11 without exceeding it, and damage is capped at 5.)*
 - 11 HP, and **13 for whoever picks second in row 1**.
 - Match ends after 5 rows or when someone hits 0. Ties break on rows won.
 
@@ -752,6 +754,86 @@ a row by total, which under `closest` steers into a bust), the tutorial, and the
 row-total preview in the UI. That is a re-run of iterations 1 and 8, not a
 tweak — and which rule the game *should* have is a design decision, not a
 measurement. The measurement only says the current one is not pulling its weight.
+
+---
+
+## Iteration 9 — the rule now carries its own weight
+
+D-20 measured that it did not. This changed it.
+
+### D-21 — "closest to 11 without going over", damage capped at 5
+
+Swept every candidate against five targets at once (`pnpm rules`), 1500 matches
+per cell, mirrored seeds. The decisive column is **greedy on vanilla only**: a
+player who always takes the biggest printed number, against the rollout bot, on
+a pool with no cards to prop the rule up.
+
+| rule | greedy | seat | ramp | rows | ko |
+|---|---|---|---|---|---|
+| `sum` (old) | **50.0%** | 49.4% | 76.2% | 4.98 | 10% |
+| `lanes` | 38–45% | 34–49% | ~90% | 4.9–5.0 | 0–35% |
+| `closest` 11, cap 5 | **22.6%** | 48.8% | 93.2% | 4.95 | 15% |
+
+`lanes` was dropped on its own numbers: still shallow at 38–45%, and every
+damage multiplier that fixed its seat skew pushed knockouts to 35%.
+
+Two findings worth keeping:
+
+**The target is a fairness dial.** Sweeping `rowTarget` against
+`secondPickerHpBonus`, seat advantage crosses from the three-card side to the
+two-card side between 9 and 10 — the three-card seat is forced to take one more
+card, which is the seat with the most ways to overshoot. The HP bonus moves it
+about 6 points per point. At target 11 the existing +2 lands on 48.8%, so the
+compensation tuned in iteration 1 did not have to move at all.
+
+**Target 10 is deeper and worse.** It puts greedy on 7.4% and ends 23% of
+matches by knockout. A beginner taking big numbers losing 93% of the time
+against the strongest bot is a beating rather than a lesson, and shorter matches
+make it feel worse. 11 keeps the game teachable while still more than halving
+what greed is worth.
+
+`closest` to 12 reads *identical to `sum`* to the decimal, which is the
+mechanism confirming itself: a target nobody reaches is not a target.
+
+### D-22 — weaken could rescue a bust
+
+Found while reading the sweep, not by a test. A side on 13 against a target of
+11 is over and worth nothing; weakening it by 2 landed it on a perfect 11. The
+attack healed. Busting is now decided on the row's **own** power, before the
+opponent's weaken is subtracted — weaken can take a row down, never back from
+the dead.
+
+### What the rule did to the cards, for free
+
+The side effect I did not plan. Bot pick priority, before → after:
+
+| card | before | after |
+|---|---|---|
+| Bulwark (8 power + shield) | 72.0% | 34.2% |
+| Warlord (8 power) | 49.4% | 26.3% |
+
+The "strictly best card deletes the encounter" problem from iteration 5 — the
+one that forced Bulwark out of every campaign pool because it opened 86–96% of
+the rows it appeared in — is simply gone. An eight-power body nearly busts a row
+on its own now. Nothing was done to those cards; the rule did it.
+
+### Making the rule reach the player
+
+A rule the simulator understands and the screen does not is a gotcha:
+
+- The row total reads `8/11`, and a pick that would go over is struck through in
+  the loss colour rather than dressed in the same green as an increase.
+- The battle overlay printed `winner − loser = damage` straight off the raw
+  totals, which under this rule is simply false — it ignored both the bust and
+  the damage cap. It now calls `rowVerdict()` in the engine, so the screen that
+  explains the resolver cannot hold a second opinion about it.
+- The tutorial's demo row summed to 11, so the best a three-card side could
+  reach was 9 and **the lesson could not happen in it**. It is three 4s and two
+  1s now: taking every big number lands on 12 and scores nothing, which the
+  player finds out by doing it rather than by reading it.
+- The bot's heuristic priced each pick alone, so landing exactly on the target
+  scored best and the next *forced* pick busted it. It now projects the cards it
+  will still be made to take.
 
 ### Known open items
 

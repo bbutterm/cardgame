@@ -10,13 +10,19 @@ A 1v1 draft duel for mobile browsers. One rule for the player: *take a card from
 
 Five cards go on the table. You and your opponent take turns picking them —
 so one of you gets three and the other gets two. When the row is empty, both
-sides fight automatically: power is summed, the weaker side loses HP. Five rows,
-then whoever has more HP wins.
+sides fight automatically: **the row closest to 11 without going over wins**, and
+the loser drops the difference in HP. Go over 11 and your row scores nothing at
+all. Five rows, then whoever has more HP wins.
 
-Every pick is the same question: **make my side stronger, or take the card they
-need?**
+That one clause is what stops the game being arithmetic. A big number is no
+longer automatically a prize — the eight-power body that used to open 86% of the
+rows it appeared in nearly busts a row on its own — and the seat forced to take
+three cards is the seat with the most ways to overshoot.
 
-The depth is in the cards, not the rules:
+Every pick is two questions at once: **does this fit, and can they afford to
+take it instead?**
+
+The cards add a second axis on top of that:
 
 | kind | example | what it does |
 |---|---|---|
@@ -27,6 +33,19 @@ The depth is in the cards, not the rules:
 
 A card's rules text is capped at eight words, and a costless card never exceeds
 4 power — if the number is big, there is small print.
+
+How much the rule itself is worth is measurable, and was measured. Put a greedy
+player who always takes the biggest number against the strongest bot, on a pool
+of nothing but vanilla cards, so no card can prop the rule up:
+
+| rule | greedy wins |
+|---|---|
+| bigger sum wins | **50.0%** |
+| closest to 11 without going over | **22.6%** |
+
+Fifty point zero. Under a plain sum, "take the biggest number" is not a
+heuristic — it is the optimal strategy, and there is nothing left to be better
+at. See `pnpm rules` and the row-rule section of `PROGRESS.md`.
 
 ---
 
@@ -52,6 +71,8 @@ the client bundle, and the app is an installable PWA that works offline.
 | `pnpm build` | production client bundle + compiled server |
 | `pnpm sim --matches 3000` | per-card balance report |
 | `pnpm balance --grid fine` | sweep match config (HP, compensation, rules) |
+| `pnpm rules` | judge a row rule against depth, fairness and pacing |
+| `pnpm depth` | greedy vs the bot — is there anything to be better at? |
 
 ---
 
@@ -93,10 +114,12 @@ when the server is unreachable.
 Making online work from a static host means putting the server somewhere that
 runs a process (Railway, Render, Fly, a VPS) and giving the client its address —
 which it currently has no way to accept, since `io()` and `/api/leaderboard` are
-both hardcoded to same-origin. That is a small change and it is not made yet. Serving the client from a CDN
-instead is supported — start the server without a client bundle and it logs
-`API only` rather than failing — but then the CDN has to proxy `/api` and
-`/socket.io` back to it, which is the setup this arrangement exists to avoid.
+both hardcoded to same-origin. That is a small change and it is not made yet.
+
+Serving the client from a CDN with the server behind it is also supported —
+start the server without a client bundle and it logs `API only` rather than
+failing — but then the CDN has to proxy `/api` and `/socket.io` back to it,
+which is the setup the single-process arrangement exists to avoid.
 
 **Before opening it to the public**, read the security notes at the end of
 `PROGRESS.md`. In particular `identify` currently trusts a raw player id, which

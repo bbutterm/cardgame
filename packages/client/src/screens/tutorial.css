@@ -438,6 +438,9 @@
 .tutorial__target {
   display: grid;
   place-items: center;
+  /* The siblings in this list stretch full width; a fixed tile has to be
+     centred by hand or it sits flush left against them. */
+  margin: 0 auto;
   width: 2.4rem;
   height: 2.4rem;
   border: var(--border) solid var(--ink);
@@ -446,4 +449,16 @@
   background: var(--accent);
   font-size: 1.15rem;
   font-weight: 900;
+}
+
+.tutorial__sum-target {
+  font-size: 0.6em;
+  opacity: 0.6;
+  font-weight: 700;
+}
+
+.tutorial__sum--bust {
+  color: var(--bad);
+  text-decoration: line-through;
+  text-decoration-thickness: 3px;
 }
