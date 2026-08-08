@@ -15,14 +15,22 @@ cards" at the bottom.
 
 ## Accepted — 6 of 9 tried
 
-| card | effect | metric | reads |
-|---|---|---|---|
-| Одинокий волк / Lone Wolf | `lonerBonus 6` — stronger the fewer cards you took | adjusted | 52.4% |
-| Последний рубеж / Last Stand | +4 while you are behind on HP | adjusted | 53.9% |
-| Осколок эгиды / Aegis Mote | Shield 4 on a 1-power body | match | 48.0% |
-| Вестник пепла / Ash Herald | 2 direct damage, and peek at the next row | match | 48.5% |
-| Каскад искр / Ember Cascade | +3 per other Spark card | adjusted | 48.0% |
-| Ночной ужас / Night Terror | opponent loses 3 power | adjusted | 53.5% |
+Values and readings below are **as they stand now**, after the row rule changed
+to "closest to 11" (D-21) and every one of these was re-tuned against it. Where
+the number a card was originally accepted at differs, it is in the last column,
+because the reasoning further down this file was written against those.
+
+| card | effect | metric | reads | was |
+|---|---|---|---|---|
+| Одинокий волк / Lone Wolf | `lonerBonus 5` — stronger the fewer cards you took | adjusted | 51.1% | 6, 52.4% |
+| Последний рубеж / Last Stand | +2 while you are behind on HP | adjusted | 47.2% | +4, 53.9% |
+| Осколок эгиды / Aegis Mote | Shield 2 on a 1-power body | match | 48.9% | shield 4, 48.0% |
+| Вестник пепла / Ash Herald | 2 direct damage, and peek at the next row | match | 51.4% | — |
+| Каскад искр / Ember Cascade | +3 per other Spark card | adjusted | 47.8% | — |
+| Ночной ужас / Night Terror | opponent loses 2 power | adjusted | 52.7% | 3, 53.5% |
+
+Every reading is the mean of four independent 2500-match seeds, and every card
+is in band on **each** of them individually.
 
 ### What each one was actually testing
 
@@ -105,6 +113,12 @@ The central tension is "improve my side or take what they need", and a card
 whose value rises as you fall behind on cards flattens exactly that. Shaving the
 number until the metric stopped complaining would have kept a card that quietly
 argues against the rest of the game.
+
+> **Note.** Everything from here down was written before the row rule changed,
+> and the *reasoning* still holds — but any "reads N%" in it is a pre-`closest`
+> measurement. Night Terror's entry in particular describes a ceiling that has
+> since moved down by one: weaken got strictly better when it stopped being able
+> to rescue a busted opponent (D-22).
 
 ### Мусорщик / Salvager — rejected as redundant
 

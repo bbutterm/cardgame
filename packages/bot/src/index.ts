@@ -200,6 +200,21 @@ function rolloutScore(state: MatchState, player: PlayerIndex): number {
   return score;
 }
 
+/**
+ * Every legal pick with the score the `hard` bot would give it.
+ *
+ * Exposed for `decisions.ts`, which asks a question the win-rate probes cannot:
+ * not who wins, but whether a pick was a choice at all. A row where one option
+ * is far ahead of the rest is executed rather than decided, and that gap is
+ * only visible from inside the evaluator.
+ */
+export function scorePicks(state: MatchState, player: PlayerIndex): Array<{ uid: string; score: number }> {
+  return legalPicks(state, player).map((instance) => ({
+    uid: instance.uid,
+    score: heuristicScore(state, player, instance, DENY_WEIGHT.hard),
+  }));
+}
+
 /** Picks a card for `player`. Throws if it is not that player's turn. */
 export function chooseCard(state: MatchState, player: PlayerIndex, options: BotOptions): string {
   const available = legalPicks(state, player);

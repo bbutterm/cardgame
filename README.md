@@ -28,7 +28,7 @@ The cards add a second axis on top of that:
 |---|---|---|
 | vanilla | Колосс · 4 | just a number |
 | synergy | Теневой маклер | +3 per other Shadow card in your row |
-| tempo | Полководец · 8 | huge, but you skip your next pick |
+| tempo | Полководец · 7 | big, but you skip your next pick |
 | control | Герольд | you pick first in the next row |
 
 A card's rules text is capped at eight words, and a costless card never exceeds

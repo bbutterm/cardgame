@@ -925,6 +925,154 @@ place, 26.4%. A 7-power tempo bomb under `closest` costs a turn *and* most of a
 row's budget, and a player who cannot price both at once is not being examined,
 only executed.
 
+### Correction to commit 0963132
+
+Its message says "Beast Tamer and Spark Relay +4 → +3". Beast Tamer was never
+touched and is still +6; the card that changed was **Pack Leader**. The commit
+is already in `main` so the message stands as written — this is the correction
+of record.
+
+### D-24 — for a card that buys something, a smaller body is not a nerf
+
+The balance pass measured Bulwark's body at 5, 6, 7, 8 and 9 power. Every value
+*except* 8 measured worse — 42.3 / 41.7 / 41.8 / 45.4 / 41.9. This inverts D-05
+("a costless card tops out at 4") for the other half of the set: a tempo debt is
+a **flat** cost, paid in full whatever the body is, so only a big body can pay
+it. Under `closest` that is in tension with the rule itself, since a big body is
+also the one most likely to bust you — which is why these cards sit in a narrow
+band rather than a broad one, and why Warlord came down to 7 while Bulwark keeps
+the unique 8.
+
+### Open: the bot over-prices `shield` under this rule
+
+Not fixed, and the sign is unambiguous across four seeds:
+
+| Bulwark | reads |
+|---|---|
+| shield 3 | 44.4% |
+| shield 1 | 47.3% |
+| no shield at all | **50.3%** |
+
+Aegis Mote shows the same direction. A shield can never *cost* its holder HP, so
+its entire price is paid in pick priority — and the evaluator appears to price
+the in-row saving, which its rollout sees, against a tempo debt that lands in the
+*next* row, which it does not. The card is worth more with the effect deleted
+than with it, which is the definition of a mispriced effect.
+
+Mitigated by trimming the shields to 1 and 2 rather than fixed, because the fix
+belongs in `packages/bot/src/index.ts` and would need its own balance pass.
+Removing Bulwark's shield outright measures best of all and is not done: it
+would leave the card rules-identical to Warlord, which is a design call and not
+a balance one.
+
+---
+
+## Iteration 11 — "it still feels like picking by stats"
+
+Design note from the player, and three proposals with it: more synergies, and
+dealing three cards at a time instead of showing the whole row. All three were
+measured. The complaint is real, both proposals are wrong, and the reason they
+are wrong is the useful part.
+
+### D-25 — the text is not the problem: it is live and it decides
+
+`pnpm texture` plays a **stats-only** opponent — one that reads every card as
+its printed number and is blind to every synergy, tempo cost and denial line —
+against the `hard` bot:
+
+| pool | stats-only wins |
+|---|---|
+| vanilla only (no text exists) | 24.4% |
+| base 30 | **9.7%** |
+| all 36 | 10.8% |
+| only the cards with text | **4.1%** |
+
+The first row is the floor: with no text in the pool at all, 24.4% is just "my
+fitting heuristic is worse than a rollout". Adding the cards that *have* text
+takes the same player from 24.4% to 9.7%. That fifteen points is what the text
+is worth.
+
+`pnpm liveness` asks the other half — how often the text is even *present* in
+the decision in front of you. A pick counts as live when at least one card on
+the table would play as something other than its printed number:
+
+| pick in row | live |
+|---|---|
+| 1st | 81.1% |
+| 2nd | 71.6% |
+| 3rd | 66.5% |
+| 4th | 44.7% |
+| 5th | 25.0% |
+| **overall** | **57.8%** |
+
+So the text is live in most picks and decides most matches. More synergies would
+not change either number.
+
+### D-26 — but the picks did not get more interesting, and that is measurable
+
+Every probe until now measured *skill expression*: how much better does the
+better player do. That is a different question from whether a pick is a choice.
+`pnpm decisions` scores every legal pick with the bot's own evaluator and looks
+at the gap between the best and the second best:
+
+| rule | a real choice (gap ≤1) | a preference (≤3) | one move (>3) |
+|---|---|---|---|
+| `sum`, the old rule | 47.4% | 41.5% | 11.1% |
+| `closest to 11` | 47.6% | 42.0% | 10.5% |
+
+**Identical.** D-21 made a pick far more *consequential* — greedy fell from 50%
+to 23% — without making it any more *contested*. The player is detecting
+something the win-rate metrics were blind to, and this is it.
+
+### Why more synergies cannot fix it
+
+Every synergy in the set — all four `powerPer` and all three `powerIf` — resolves
+into "my number gets bigger". So any two options are comparable on one axis, and
+on one axis one of them is simply better. That is the definition of a pick that
+is executed rather than decided, and adding more cards of the same shape adds
+arithmetic rather than gameplay.
+
+A real choice needs options that are **not comparable**: one that changes the
+number against one that changes the rule, the order, or what the opponent knows.
+
+### D-27 — dealing three at a time makes it worse, on every metric
+
+Implemented as `MatchConfig.revealCount` (with `viewFor` redacting the face-down
+cards, or the mechanic would be cosmetic) and measured:
+
+| face-up | greedy | ramp | seat | a real choice |
+|---|---|---|---|---|
+| 5 (shipped) | 23.1% | 95.8% | 48.8% | **47.6%** |
+| 4 | 23.6% | 93.4% | 46.6% | 43.1% |
+| 3 | 25.8% | 90.4% | 46.9% | 37.8% |
+| 2 | 34.0% | 79.5% | 45.2% | **26.4%** |
+
+It fails in both directions at once, which is unusual and conclusive. Skill
+expression falls, as hidden information always compresses it. But the *decision*
+metric falls too, and harder — which is obvious in hindsight and I did not
+predict it: with fewer cards on the table there is less to choose between, so
+the best of two is more often plainly best than the best of five. Hiding cards
+does not make a row less solved, it makes it smaller.
+
+Kept in the engine behind `revealCount: 0` (all face-up, unchanged) because the
+measurement is worth being able to repeat, not because it is close.
+
+### Where the gameplay actually is
+
+The one verb the effect language has is "change a number". Adding verbs is what
+would make two options incomparable. The strongest candidate under `closest`,
+because it inverts what taking a card means:
+
+    «Эта карта идёт в ряд оппонента» — you take it, they get it
+
+Under a target you can overshoot, handing someone a card is an attack, and it is
+not on the same axis as anything else in the set. Others in the same family: a
+card that changes *your* target for the row, one that resolves the row on its
+largest card instead of its sum, one that hides your row until the battle.
+
+Not built. This is the design direction the measurements point at, and it is a
+set-sized piece of work rather than a tuning pass.
+
 ### Known open items
 
 - **No reward for finishing.** *(Done — see iteration 6.)*

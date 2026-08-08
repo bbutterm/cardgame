@@ -157,7 +157,7 @@ export const CAMPAIGN: readonly Encounter[] = [
     id: 'heavy',
     name: { ru: 'Тяжеловес', en: 'The Heavyweight' },
     blurb: { ru: 'Большая карта — почти перебор.', en: 'A big card is nearly a bust.' },
-    twist: { ru: 'У Тяжеловеса 14 HP', en: 'The Heavyweight has 14 HP' },
+    twist: { ru: 'У Тяжеловеса 15 HP', en: 'The Heavyweight has 15 HP' },
     difficulty: 'normal',
     // The encounter this rule change broke worst, and then fixed.
     //
@@ -176,7 +176,16 @@ export const CAMPAIGN: readonly Encounter[] = [
       'warlord', 'bulwark', 'quickstep', 'herald', 'colossus', 'wanderer',
       'iron-drone', 'flame-hound', 'shade', 'wolf-pup', 'cog', 'ember',
     ],
-    hp: [11, 14],
+    // 15, not the 14 this was first tuned to: dropping Warlord from 8 power to 7
+    // took the encounter from 52% to 64% for a good player and put the curve
+    // back out of order. A card change two files away moves this number, which
+    // is exactly why the campaign report prints the curve and names its
+    // inversions rather than leaving them to be noticed.
+    //
+    // 16 was tried first and overshot — it put this fight level with the finale
+    // (49.4% against 48.2%) and, worse, made it *harder* than the finale for an
+    // average player. The last two fights have to be the last two fights.
+    hp: [11, 15],
   },
   {
     id: 'archivist',

@@ -18,6 +18,9 @@
     "balance": "tsx packages/bot/scripts/balance.ts",
     "rules": "tsx packages/bot/scripts/rules.ts",
     "depth": "tsx packages/bot/scripts/depth.ts",
+    "texture": "tsx packages/bot/scripts/texture.ts",
+    "liveness": "tsx packages/bot/scripts/liveness.ts",
+    "decisions": "tsx packages/bot/scripts/decisions.ts",
     "check": "pnpm typecheck && pnpm test"
   },
   "devDependencies": {

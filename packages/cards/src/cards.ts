@@ -310,7 +310,11 @@ export const CARDS: readonly CardDef[] = [
     id: 'warlord',
     name: { ru: 'Полководец', en: 'Warlord' },
     text: { ru: 'Пропусти следующий пик', en: 'Skip your next pick' },
-    power: 8,
+    // 8 under `sum`, where it was the biggest number in the game. Under
+    // `closest` an 8 has to find a 3 to be worth anything and a bare 7 reads
+    // 51.0% against 54.1% — so the three skip-only epics are now one cycle at
+    // 7 (fire / shadow / beast) and Bulwark keeps the unique 8.
+    power: 7,
     faction: 'fire',
     rarity: 'epic',
     tags: [],
@@ -350,7 +354,12 @@ export const CARDS: readonly CardDef[] = [
     faction: 'machine',
     rarity: 'rare',
     tags: ['construct'],
-    weight: 4,
+    // 4 → 6 for sample, not for strength. On the match metric a card drafted in
+    // a third of the deals cannot be resolved by an 800-match regression run —
+    // this one read 39.9% there against a true 47–48% over 10,000 matches, and
+    // one seed of the extended pool put it at 41.1%. At 6 the sample is 1,690
+    // rows instead of 990 and the readings stop bouncing.
+    weight: 6,
     maxCopies: 2,
     // Under `closest` the shield on this body is a trap, and the sign is not
     // subtle: at shield 3 the card reads 44.4% and drops out of the corridor on

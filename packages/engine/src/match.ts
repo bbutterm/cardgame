@@ -107,15 +107,24 @@ export function createMatch(options: CreateMatchOptions): ApplyResult {
   return { state, events };
 }
 
+/** The face-up cards of the current row, in deal order. */
+export function revealed(state: MatchState): CardInstance[] {
+  const remaining = state.open.filter((c): c is CardInstance => c !== null);
+  const n = state.config.revealCount;
+  return n > 0 ? remaining.slice(0, n) : remaining;
+}
+
 /** Cards the given player may take right now. Empty unless it is their turn. */
 export function legalPicks(state: MatchState, player: PlayerIndex): CardInstance[] {
   if (state.phase !== 'draft' || state.turn !== player) return [];
-  return state.open.filter((c): c is CardInstance => c !== null);
+  return revealed(state);
 }
 
 /** The auto-pick used when the turn timer runs out: strongest printed number. */
 export function autoPickUid(state: MatchState): string | null {
-  const available = state.open.filter((c): c is CardInstance => c !== null);
+  // Only from what the player could actually see — an auto-pick that reaches a
+  // face-down card would be taking a decision the player was never offered.
+  const available = revealed(state);
   if (available.length === 0) return null;
   let best = available[0] as CardInstance;
   let bestPower = getCard(best.cardId).power;
@@ -339,6 +348,20 @@ export function viewFor(state: MatchState, player: PlayerIndex): MatchState {
     return [];
   });
   view.players[other(player)].peekedRow = null;
+
+  // Face-down cards of the *current* row are redacted too. Without this the
+  // client is handed the cards it is not supposed to see, and the mechanic is
+  // cosmetic — the same defect `viewFor` was written to fix for future rows.
+  if (view.config.revealCount > 0) {
+    const open = view.open;
+    let seen = 0;
+    for (let i = 0; i < open.length; i++) {
+      if (open[i] === null) continue;
+      seen++;
+      if (seen > view.config.revealCount) open[i] = null;
+    }
+  }
+
   view.seed = REDACTED_SEED;
   view.rngState = 0;
   return view;

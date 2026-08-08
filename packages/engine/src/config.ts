@@ -21,6 +21,15 @@ export interface MatchConfig {
   maxRoundDamage: number;
   /** How the first picker of each row after the first is decided. */
   firstPickerRule: FirstPickerRule;
+  /**
+   * How many of a row's remaining cards are face-up. 0 means all of them.
+   *
+   * At 5 (or 0) a row is a closed optimisation: both totals, both budgets and
+   * every remaining card are on screen, so once a player has solved it there is
+   * nothing left to decide, only to execute. Below that, a pick is a commitment
+   * made without knowing what you will still be made to take.
+   */
+  revealCount: number;
   /** How a row is scored once both sides have their cards. */
   rowRule: RowRule;
   /** Target total for `rowRule: 'closest'`. Ignored by the other rules. */
@@ -74,6 +83,8 @@ export const DEFAULT_CONFIG: MatchConfig = {
   // end by knockout. At 5 it is 14%, which is where `sum` sat.
   maxRoundDamage: 5,
   firstPickerRule: 'alternate',
+  // 0 = the whole row is face-up, which is what shipped. Under measurement.
+  revealCount: 0,
   // Chosen by sweep, see D-21. Against `sum`, "closest to 11" drops a greedy
   // player from 50.0% to 23.2% while leaving seat fairness on 50.0% with the
   // HP compensation untouched — the rule started carrying its own weight
